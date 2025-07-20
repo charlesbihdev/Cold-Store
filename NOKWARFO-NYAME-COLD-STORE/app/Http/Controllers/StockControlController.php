@@ -65,6 +65,7 @@ class StockControlController extends Controller
                 'stock_received' => $stockReceived,
                 'previous_stock' => $previousStock,
                 'total_available' => $totalAvailable,
+                'stock_available' => $totalAvailable,
                 'cash_sales' => $cashSales,
                 'credit_sales' => $creditSales,
                 'total_sales' => $totalSales,

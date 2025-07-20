@@ -9,27 +9,73 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ChevronLeft, ChevronRight, Search, Filter } from "lucide-react"
 import AppLayout from '@/layouts/app-layout';
+import React from 'react'; // Added for useEffect
+import InputError from '@/components/InputError';
 
 function SalesTransactions() {
   const { sales_transactions = [], products = [], customers = [] } = usePage().props;
   const [open, setOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  // Cart-style items state
+  const [items, setItems] = useState([
+    { product_id: '', qty: '', unit_price: '', total: '' }
+  ]);
+  // Payment state
+  const [amountPaid, setAmountPaid] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [paymentType, setPaymentType] = useState('cash');
   const form = useForm({
     customer_id: '',
-    product_id: '',
-    qty: '',
-    unit_price: '',
-    total: '',
-    payment_type: '',
+    items: items,
+    amount_paid: '',
+    due_date: '',
+    payment_type: 'cash',
   });
+
+  // Update form items when items state changes
+  React.useEffect(() => {
+    form.setData('items', items);
+  }, [items]);
+  React.useEffect(() => {
+    form.setData('amount_paid', amountPaid);
+  }, [amountPaid]);
+  React.useEffect(() => {
+    form.setData('due_date', dueDate);
+  }, [dueDate]);
+  React.useEffect(() => {
+    form.setData('payment_type', paymentType);
+  }, [paymentType]);
+
+  // Calculate running total
+  const runningTotal = items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+
+  // Ensure amountPaid is always runningTotal for cash
+  React.useEffect(() => {
+    if (paymentType === 'cash') {
+      setAmountPaid(runningTotal.toString());
+      form.setError('amount_paid', undefined);
+    }
+    if (paymentType === 'credit') {
+      setAmountPaid('0');
+      form.setError('amount_paid', undefined);
+    }
+  }, [paymentType, runningTotal]);
 
   const handleOpen = () => {
     form.reset();
+    setItems([{ product_id: '', qty: '', unit_price: '', total: '' }]);
+    setAmountPaid('');
+    setDueDate('');
+    setPaymentType('cash');
     setOpen(true);
   };
   const handleClose = () => {
     setOpen(false);
     form.reset();
+    setItems([{ product_id: '', qty: '', unit_price: '', total: '' }]);
+    setAmountPaid('');
+    setDueDate('');
+    setPaymentType('cash');
   };
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -40,6 +86,44 @@ function SalesTransactions() {
   const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to delete this transaction?')) {
       router.delete(`/sales-transactions/${id}`);
+    }
+  };
+  // Cart logic
+  const handleItemChange = (idx, field, value) => {
+    const newItems = items.map((item, i) =>
+      i === idx ? { ...item, [field]: value, total: field === 'qty' || field === 'unit_price' ? (field === 'qty' ? value * (item.unit_price || 0) : (item.qty || 0) * value) : item.total } : item
+    );
+    setItems(newItems);
+  };
+  const addItem = () => {
+    setItems([...items, { product_id: '', qty: '', unit_price: '', total: '' }]);
+  };
+  const removeItem = (idx) => {
+    if (items.length === 1) return;
+    setItems(items.filter((_, i) => i !== idx));
+  };
+  // Payment logic
+  const handleAmountPaidChange = (v) => {
+    setAmountPaid(v);
+    if (paymentType === 'partial') {
+      if (parseFloat(v) <= 0 || parseFloat(v) >= runningTotal) {
+        form.setError('amount_paid', 'For partial payments, the amount paid must be greater than 0 and less than the total.');
+      } else {
+        form.setError('amount_paid', undefined);
+      }
+    }
+  };
+  const handlePaymentTypeChange = (v) => {
+    setPaymentType(v);
+    if (v === 'credit') {
+      setAmountPaid('0');
+      form.setError('amount_paid', undefined);
+    } else if (v === 'cash') {
+      setAmountPaid(runningTotal.toString());
+      form.setError('amount_paid', undefined);
+    } else if (v === 'partial') {
+      setAmountPaid('');
+      form.setError('amount_paid', undefined);
     }
   };
 
@@ -116,17 +200,33 @@ function SalesTransactions() {
                     <TableCell className="font-medium">{transaction.id}</TableCell>
                     <TableCell>{transaction.date}</TableCell>
                     <TableCell>{transaction.customer}</TableCell>
-                    <TableCell>{transaction.product}</TableCell>
-                    <TableCell>{transaction.qty}</TableCell>
-                    <TableCell>GH₵{parseFloat(transaction.unit_price).toFixed(2)}</TableCell>
-                    <TableCell className="font-medium">GH₵{parseFloat(transaction.total).toFixed(2)}</TableCell>
+                    <TableCell>
+                      {transaction.sale_items.map((item, idx) => (
+                        <div key={idx}>{item.product}</div>
+                      ))}
+                    </TableCell>
+                    <TableCell>
+                      {transaction.sale_items.map((item, idx) => (
+                        <div key={idx}>{item.quantity}</div>
+                      ))}
+                    </TableCell>
+                    <TableCell>
+                      {transaction.sale_items.map((item, idx) => (
+                        <div key={idx}>GH₵{parseFloat(item.unit_price).toFixed(2)}</div>
+                      ))}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {transaction.sale_items.map((item, idx) => (
+                        <div key={idx}>GH₵{parseFloat(item.total).toFixed(2)}</div>
+                      ))}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={transaction.payment_type === "Cash" ? "default" : "secondary"}>
                         {transaction.payment_type}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Button variant="destructive" size="sm" onClick={() => handleDelete(transaction.id)}>Delete</Button>
+                      <Button variant="destructive" size="sm" onClick={() => handleDelete(transaction.id)} className="text-white">Delete</Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -140,7 +240,25 @@ function SalesTransactions() {
             <DialogHeader>
               <DialogTitle>Add Sales Transaction</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={e => {
+              e.preventDefault();
+              // Client-side validation before submit
+              if (paymentType === 'cash' && parseFloat(amountPaid) !== runningTotal) {
+                form.setError('amount_paid', 'For cash payments, the amount paid must equal the total.');
+                return;
+              }
+              if (paymentType === 'credit' && parseFloat(amountPaid) !== 0) {
+                form.setError('amount_paid', 'For credit sales, the amount paid must be 0.');
+                return;
+              }
+              if (paymentType === 'partial' && (parseFloat(amountPaid) <= 0 || parseFloat(amountPaid) >= runningTotal)) {
+                form.setError('amount_paid', 'For partial payments, the amount paid must be greater than 0 and less than the total.');
+                return;
+              }
+              form.post('/sales-transactions', {
+                onSuccess: () => handleClose(),
+              });
+            }} className="space-y-4">
               <div>
                 <label className="block mb-1 font-medium">Customer</label>
                 <Select value={form.data.customer_id} onValueChange={v => form.setData('customer_id', v)}>
@@ -155,49 +273,78 @@ function SalesTransactions() {
                 </Select>
                 {form.errors.customer_id && <div className="text-red-500 text-xs mt-1">{form.errors.customer_id}</div>}
               </div>
+              {/* Cart Items */}
               <div>
-                <label className="block mb-1 font-medium">Product</label>
-                <Select value={form.data.product_id} onValueChange={v => form.setData('product_id', v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select product" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map(p => (
-                      <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {form.errors.product_id && <div className="text-red-500 text-xs mt-1">{form.errors.product_id}</div>}
+                <label className="block mb-1 font-medium">Items</label>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {items.map((item, idx) => (
+                    <div key={idx} className="flex flex-wrap gap-2 items-end w-full">
+                      <div className="flex-1 min-w-[120px]">
+                        <Select value={item.product_id} onValueChange={v => handleItemChange(idx, 'product_id', v)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Product" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {products.map(p => (
+                              <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="w-20 min-w-[70px]">
+                        <Input type="number" min="1" placeholder="Qty" value={item.qty} onChange={e => handleItemChange(idx, 'qty', e.target.value)} />
+                      </div>
+                      <div className="w-24 min-w-[90px]">
+                        <Input type="number" min="0" step="0.01" placeholder="Unit Price" value={item.unit_price} onChange={e => handleItemChange(idx, 'unit_price', e.target.value)} />
+                      </div>
+                      <div className="w-24 min-w-[90px]">
+                        <Input type="number" min="0" step="0.01" placeholder="Total" value={item.total} readOnly />
+                      </div>
+                      <Button type="button" variant="destructive" size="sm" className="text-white" onClick={() => removeItem(idx)} disabled={items.length === 1}>Remove</Button>
+                    </div>
+                  ))}
+                  <Button type="button" variant="outline" size="sm" onClick={addItem}>Add Item</Button>
+                </div>
+                {form.errors['items'] && <div className="text-red-500 text-xs mt-1">{form.errors['items']}</div>}
               </div>
+              {/* Running Total */}
+              <div className="font-bold text-lg">Total: GH₵{runningTotal.toFixed(2)}</div>
+              {/* Payment Section */}
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="block mb-1 font-medium">Quantity</label>
-                  <Input type="number" min="1" value={form.data.qty} onChange={e => form.setData('qty', e.target.value)} />
-                  {form.errors.qty && <div className="text-red-500 text-xs mt-1">{form.errors.qty}</div>}
+                  <label className="block mb-1 font-medium">Payment Type</label>
+                  <Select value={paymentType} onValueChange={handlePaymentTypeChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select payment type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="credit">Credit</SelectItem>
+                      <SelectItem value="partial">Partial</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {form.errors.payment_type && <div className="text-red-500 text-xs mt-1">{form.errors.payment_type}</div>}
                 </div>
                 <div className="flex-1">
-                  <label className="block mb-1 font-medium">Unit Price</label>
-                  <Input type="number" min="0" step="0.01" value={form.data.unit_price} onChange={e => form.setData('unit_price', e.target.value)} />
-                  {form.errors.unit_price && <div className="text-red-500 text-xs mt-1">{form.errors.unit_price}</div>}
+                  <label className="block mb-1 font-medium">Amount Paid</label>
+                  <Input
+                    type="number"
+                    min={paymentType === 'partial' ? 1 : 0}
+                    max={paymentType === 'partial' ? runningTotal - 1 : runningTotal}
+                    step="0.01"
+                    value={amountPaid}
+                    onChange={e => handleAmountPaidChange(e.target.value)}
+                    disabled={paymentType === 'credit' || paymentType === 'cash'}
+                  />
+                  {form.errors.amount_paid && <InputError message={form.errors.amount_paid} className="mt-2" />}
                 </div>
-              </div>
-              <div>
-                <label className="block mb-1 font-medium">Total</label>
-                <Input type="number" min="0" step="0.01" value={form.data.total} onChange={e => form.setData('total', e.target.value)} />
-                {form.errors.total && <div className="text-red-500 text-xs mt-1">{form.errors.total}</div>}
-              </div>
-              <div>
-                <label className="block mb-1 font-medium">Payment Type</label>
-                <Select value={form.data.payment_type} onValueChange={v => form.setData('payment_type', v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select payment type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="credit">Credit</SelectItem>
-                  </SelectContent>
-                </Select>
-                {form.errors.payment_type && <div className="text-red-500 text-xs mt-1">{form.errors.payment_type}</div>}
+                {paymentType !== 'cash' && (
+                  <div className="flex-1">
+                    <label className="block mb-1 font-medium">Due Date</label>
+                    <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                    {form.errors.due_date && <div className="text-red-500 text-xs mt-1">{form.errors.due_date}</div>}
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button type="button" variant="secondary" onClick={handleClose}>Cancel</Button>

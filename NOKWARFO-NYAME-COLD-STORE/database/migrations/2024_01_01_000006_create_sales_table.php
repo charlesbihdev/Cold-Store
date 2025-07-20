@@ -19,8 +19,8 @@ return new class extends Migration
             $table->decimal('subtotal', 10, 2);
             $table->decimal('tax', 10, 2)->default(0);
             $table->decimal('total', 10, 2);
-            $table->enum('payment_type', ['cash', 'credit', 'bank_transfer', 'check']);
-            $table->enum('status', ['completed', 'pending', 'cancelled'])->default('completed');
+            $table->enum('payment_type', ['cash', 'credit']);
+            $table->enum('status', ['completed', 'pending', 'cancelled', 'partial', 'credit'])->default('completed');
             
             // Credit-specific fields (nullable for non-credit sales)
             $table->date('due_date')->nullable();
