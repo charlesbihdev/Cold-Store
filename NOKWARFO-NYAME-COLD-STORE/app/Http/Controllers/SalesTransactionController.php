@@ -6,13 +6,16 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Models\Product;
+use App\Models\Customer;
 
 class SalesTransactionController extends Controller
 {
     public function index()
     {
         $sales = Sale::with(['customer', 'saleItems.product'])->orderByDesc('created_at')->get();
-        
+        $products = Product::orderBy('name')->get();
+        $customers = Customer::orderBy('name')->get();
         // Transform sales data to match the frontend expectations
         $sales_transactions = $sales->map(function ($sale) {
             return [
@@ -20,15 +23,17 @@ class SalesTransactionController extends Controller
                 'date' => $sale->created_at->format('Y-m-d'),
                 'customer' => $sale->customer ? $sale->customer->name : $sale->customer_name,
                 'product' => $sale->saleItems->first() ? $sale->saleItems->first()->product->name : 'Multiple Products',
+                'product_id' => $sale->saleItems->first() ? $sale->saleItems->first()->product_id : null,
                 'qty' => $sale->saleItems->sum('quantity'),
                 'unit_price' => $sale->saleItems->first() ? $sale->saleItems->first()->unit_price : 0,
                 'total' => $sale->total,
                 'payment_type' => ucfirst($sale->payment_type),
             ];
         });
-        
         return Inertia::render('sales-transactions', [
             'sales_transactions' => $sales_transactions,
+            'products' => $products,
+            'customers' => $customers,
         ]);
     }
 

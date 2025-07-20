@@ -68,20 +68,23 @@ class ColdStoreSeeder extends Seeder
             );
         }
 
+        // Get suppliers for assignment
+        $supplierMap = Supplier::pluck('id', 'name');
+
         // Seed Products
         $products = [
-            ['name' => '16 KILOS', 'lines_per_carton' => 1, 'cost_price' => 525],
-            ['name' => 'KOREA 16+', 'lines_per_carton' => 1, 'cost_price' => 525],
-            ['name' => '25+ CHINA', 'lines_per_carton' => 1, 'cost_price' => 524],
-            ['name' => 'VIRA 16 KILO', 'lines_per_carton' => 1, 'cost_price' => 527],
-            ['name' => 'AAA', 'lines_per_carton' => 1, 'cost_price' => 530],
-            ['name' => 'CHOFI', 'lines_per_carton' => 1, 'cost_price' => 520],
-            ['name' => 'YELLOW TAI', 'lines_per_carton' => 1, 'cost_price' => 0],
-            ['name' => 'ABIDJAN', 'lines_per_carton' => 1, 'cost_price' => 0],
-            ['name' => 'EBA', 'lines_per_carton' => 1, 'cost_price' => 0],
-            ['name' => 'SAFUL', 'lines_per_carton' => 1, 'cost_price' => 0],
-            ['name' => 'ADOR', 'lines_per_carton' => 1, 'cost_price' => 0],
-            ['name' => '4IX FISH', 'lines_per_carton' => 1, 'cost_price' => 0],
+            ['name' => '16 KILOS', 'lines_per_carton' => 1, 'cost_price' => 525, 'selling_price' => 600, 'description' => 'Frozen fish', 'category' => 'Fish', 'supplier_id' => $supplierMap['Fresh Farms Ltd'] ?? null, 'is_active' => true],
+            ['name' => 'KOREA 16+', 'lines_per_carton' => 1, 'cost_price' => 525, 'selling_price' => 610, 'description' => 'Frozen fish', 'category' => 'Fish', 'supplier_id' => $supplierMap['Ocean Fresh Co'] ?? null, 'is_active' => true],
+            ['name' => '25+ CHINA', 'lines_per_carton' => 1, 'cost_price' => 524, 'selling_price' => 590, 'description' => 'Frozen fish', 'category' => 'Fish', 'supplier_id' => $supplierMap['Asia Import Ltd'] ?? null, 'is_active' => true],
+            ['name' => 'VIRA 16 KILO', 'lines_per_carton' => 1, 'cost_price' => 527, 'selling_price' => 620, 'description' => 'Frozen fish', 'category' => 'Fish', 'supplier_id' => $supplierMap['Local Suppliers'] ?? null, 'is_active' => true],
+            ['name' => 'AAA', 'lines_per_carton' => 1, 'cost_price' => 530, 'selling_price' => 650, 'description' => 'Frozen chicken', 'category' => 'Chicken', 'supplier_id' => $supplierMap['Fresh Farms Ltd'] ?? null, 'is_active' => true],
+            ['name' => 'CHOFI', 'lines_per_carton' => 1, 'cost_price' => 520, 'selling_price' => 600, 'description' => 'Frozen chicken', 'category' => 'Chicken', 'supplier_id' => $supplierMap['Local Suppliers'] ?? null, 'is_active' => true],
+            ['name' => 'YELLOW TAI', 'lines_per_carton' => 1, 'cost_price' => 0, 'selling_price' => null, 'description' => null, 'category' => null, 'supplier_id' => null, 'is_active' => true],
+            ['name' => 'ABIDJAN', 'lines_per_carton' => 1, 'cost_price' => 0, 'selling_price' => null, 'description' => null, 'category' => null, 'supplier_id' => null, 'is_active' => true],
+            ['name' => 'EBA', 'lines_per_carton' => 1, 'cost_price' => 0, 'selling_price' => null, 'description' => null, 'category' => null, 'supplier_id' => null, 'is_active' => true],
+            ['name' => 'SAFUL', 'lines_per_carton' => 1, 'cost_price' => 0, 'selling_price' => null, 'description' => null, 'category' => null, 'supplier_id' => null, 'is_active' => true],
+            ['name' => 'ADOR', 'lines_per_carton' => 1, 'cost_price' => 0, 'selling_price' => null, 'description' => null, 'category' => null, 'supplier_id' => null, 'is_active' => true],
+            ['name' => '4IX FISH', 'lines_per_carton' => 1, 'cost_price' => 0, 'selling_price' => null, 'description' => null, 'category' => null, 'supplier_id' => null, 'is_active' => true],
         ];
 
         foreach ($products as $productData) {

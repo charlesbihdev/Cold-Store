@@ -15,12 +15,11 @@ return new class extends Migration
             $table->id();
             $table->foreignId('product_id')->constrained()->onDelete('cascade');
             $table->foreignId('supplier_id')->nullable()->constrained()->onDelete('set null');
-            $table->enum('type', ['received', 'sold', 'adjusted', 'damaged', 'expired']);
+            $table->enum('type', ['received', 'sold', 'adjusted']);
             $table->integer('quantity');
             $table->decimal('unit_cost', 10, 2)->nullable();
             $table->decimal('total_cost', 10, 2)->nullable();
             $table->text('notes')->nullable();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Who recorded the movement
             $table->timestamps();
         });
     }

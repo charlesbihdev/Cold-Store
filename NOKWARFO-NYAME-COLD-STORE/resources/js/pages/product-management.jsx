@@ -1,180 +1,142 @@
+import { useForm, router } from '@inertiajs/react';
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Archive } from "lucide-react"
+import { Plus, Archive, Edit, Trash2 } from "lucide-react"
 import AppLayout from '@/layouts/app-layout';
+import InputError from '@/components/InputError';
 
-function ProductManagement() {
-  const [products] = useState([
-    {
-      id: 1,
-      name: "16 KILOS",
-      stock: 45,
-      costPrice: 525,
-      totalValue: 23625,
-      supplier: "Fresh Farms Ltd",
-    },
-    {
-      id: 2,
-      name: "KOREA 16+",
-      stock: 32,
-      costPrice: 525,
-      totalValue: 16800,
-      supplier: "Ocean Fresh Co",
-    },
-    {
-      id: 3,
-      name: "25+ CHINA",
-      stock: 18,
-      costPrice: 524,
-      totalValue: 9432,
-      supplier: "Asia Import Ltd",
-    },
-    {
-      id: 4,
-      name: "VIRA 16 KILO",
-      stock: 25,
-      costPrice: 527,
-      totalValue: 13175,
-      supplier: "Local Suppliers",
-    },
-    {
-      id: 5,
-      name: "AAA",
-      stock: 0,
-      costPrice: 0,
-      totalValue: 0,
-      supplier: "-",
-    },
-    {
-      id: 6,
-      name: "CHOFI",
-      stock: 0,
-      costPrice: 0,
-      totalValue: 0,
-      supplier: "-",
-    },
-    {
-      id: 7,
-      name: "YELLOW TAI",
-      stock: 0,
-      costPrice: 0,
-      totalValue: 0,
-      supplier: "-",
-    },
-    {
-      id: 8,
-      name: "ABIDJAN",
-      stock: 0,
-      costPrice: 0,
-      totalValue: 0,
-      supplier: "-",
-    },
-    {
-      id: 9,
-      name: "EBA",
-      stock: 0,
-      costPrice: 0,
-      totalValue: 0,
-      supplier: "-",
-    },
-    {
-      id: 10,
-      name: "SAFUL",
-      stock: 0,
-      costPrice: 0,
-      totalValue: 0,
-      supplier: "-",
-    },
-    {
-      id: 11,
-      name: "ADOR",
-      stock: 0,
-      costPrice: 0,
-      totalValue: 0,
-      supplier: "-",
-    },
-    {
-      id: 12,
-      name: "4IX FISH",
-      stock: 0,
-      costPrice: 0,
-      totalValue: 0,
-      supplier: "-",
-    },
-  ])
+export default function ProductManagement({ products = [], suppliers = [], errors = {} }) {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
 
-  const totalInventoryValue = products.reduce((sum, product) => sum + product.totalValue, 0)
-  const productsWithStock = products.filter((p) => p.stock > 0).length
+  const { data, setData, post, put, processing, reset } = useForm({
+    name: '',
+    category: '',
+    cost_price: '',
+    supplier_id: '',
+  });
 
   const breadcrumbs = [
-    { title: 'Product Management', href: '/product-management' },
+    { title: 'Inventory Management', href: '/inventory-management' },
   ];
+
+  function handleAdd(e) {
+    e.preventDefault();
+    post(route('products.store'), {
+      onSuccess: () => {
+        reset();
+        setIsAddModalOpen(false);
+      },
+      preserveScroll: true,
+      preserveState: true,
+      only: ["products", "errors", "flash"],
+    });
+  }
+
+  function handleEdit(product) {
+    setEditingProduct(product);
+    setData({
+      name: product.name,
+      category: product.category || '',
+      cost_price: product.cost_price || '',
+      supplier_id: product.supplier_id ? product.supplier_id.toString() : '',
+    });
+    setIsEditModalOpen(true);
+  }
+
+  function handleUpdate(e) {
+    e.preventDefault();
+    put(route('products.update', editingProduct.id), {
+      onSuccess: () => {
+        reset();
+        setIsEditModalOpen(false);
+        setEditingProduct(null);
+      },
+      preserveScroll: true,
+      preserveState: true,
+      only: ["products", "errors", "flash"],
+    });
+  }
+
+  function handleDelete(productId) {
+    if (confirm('Are you sure you want to delete this product?')) {
+      router.delete(route('products.destroy', productId), {
+        preserveScroll: true,
+        preserveState: true,
+        only: ["products", "flash"],
+      });
+    }
+  }
+
+  const totalInventoryValue = products.reduce((sum, product) => sum + (parseFloat(product.cost_price) * parseInt(product.stock_quantity)), 0)
+  const productsWithStock = products.filter((p) => p.stock_quantity > 0).length
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <div className="p-6 space-y-6 bg-gray-100 min-h-screen">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Inventory Management</h1>
-          <Dialog>
+          <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button onClick={() => setIsAddModalOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add New Product
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Add Product to Inventory</DialogTitle>
+                <DialogDescription>All fields marked with * are required.</DialogDescription>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
+              <form onSubmit={handleAdd} className="grid gap-4 py-4">
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="product" className="text-right">
-                    Product
-                  </Label>
-                  <Select>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select product" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="16-kilos">16 KILOS</SelectItem>
-                      <SelectItem value="korea-16">KOREA 16+</SelectItem>
-                      <SelectItem value="25-china">25+ CHINA</SelectItem>
-                      <SelectItem value="vira-16">VIRA 16 KILO</SelectItem>
-                      <SelectItem value="aaa">AAA</SelectItem>
-                      <SelectItem value="chofi">CHOFI</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="name" className="text-right">Product Name *</Label>
+                  <div className="col-span-3">
+                    <Input id="name" placeholder="Enter product name" value={data.name} onChange={e => setData('name', e.target.value)} required />
+                    {errors.name && <InputError message={errors.name} className="mt-2" />}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="supplier" className="text-right">
-                    Supplier
-                  </Label>
-                  <Select>
-                    <SelectTrigger className="col-span-3">
-                      <SelectValue placeholder="Select supplier" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="fresh-farms">Fresh Farms Ltd</SelectItem>
-                      <SelectItem value="ocean-fresh">Ocean Fresh Co</SelectItem>
-                      <SelectItem value="asia-import">Asia Import Ltd</SelectItem>
-                      <SelectItem value="local">Local Suppliers</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="category" className="text-right">Category *</Label>
+                  <div className="col-span-3">
+                    <Input id="category" placeholder="e.g., Frozen, Chilled, Beverages" value={data.category} onChange={e => setData('category', e.target.value)} required />
+                    {errors.category && <InputError message={errors.category} className="mt-2" />}
+                  </div>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="stock-quantity" className="text-right">
-                    Stock Quantity
-                  </Label>
-                  <Input id="stock-quantity" type="number" className="col-span-3" placeholder="Enter quantity to add" />
+                  <Label htmlFor="cost_price" className="text-right">Cost Price (GH₵) *</Label>
+                  <div className="col-span-3">
+                    <Input id="cost_price" type="number" step="0.01" placeholder="0.00" value={data.cost_price} onChange={e => setData('cost_price', e.target.value)} required />
+                    {errors.cost_price && <InputError message={errors.cost_price} className="mt-2" />}
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="supplier_id" className="text-right">Supplier *</Label>
+                  <div className="col-span-3">
+                    <Select value={data.supplier_id} onValueChange={value => setData('supplier_id', value)} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select supplier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {suppliers.map((supplier) => (
+                          <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                            {supplier.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.supplier_id && <InputError message={errors.supplier_id} className="mt-2" />}
                 </div>
               </div>
-              <Button>Add to Inventory</Button>
+                <Button type="submit" disabled={processing}>Add Product</Button>
+              </form>
             </DialogContent>
           </Dialog>
         </div>
@@ -198,7 +160,7 @@ function ProductManagement() {
                 <p className="text-sm text-muted-foreground">Products in Stock</p>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold">{products.reduce((sum, p) => sum + p.stock, 0)}</div>
+                <div className="text-2xl font-bold">{products.reduce((sum, p) => sum + parseInt(p.stock_quantity), 0)}</div>
                 <p className="text-sm text-muted-foreground">Total Stock Units</p>
               </div>
               <div className="text-center">
@@ -219,9 +181,8 @@ function ProductManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Product Name</TableHead>
-                  <TableHead>Current Stock</TableHead>
+                  <TableHead>Category</TableHead>
                   <TableHead>Cost Price (GH₵)</TableHead>
-                  <TableHead>Total Value (GH₵)</TableHead>
                   <TableHead>Supplier</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -230,86 +191,85 @@ function ProductManagement() {
                 {products.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell className={product.stock === 0 ? "text-gray-400" : ""}>{product.stock}</TableCell>
-                    <TableCell className={product.costPrice === 0 ? "text-gray-400" : ""}>
-                      {product.costPrice === 0 ? "-" : `GH₵${product.costPrice.toFixed(2)}`}
-                    </TableCell>
-                    <TableCell className={product.totalValue === 0 ? "text-gray-400" : "font-medium text-green-600"}>
-                      {product.totalValue === 0 ? "-" : `GH₵${product.totalValue.toFixed(2)}`}
-                    </TableCell>
-                    <TableCell className={product.supplier === "-" ? "text-gray-400" : ""}>{product.supplier}</TableCell>
+                    <TableCell>{product.category}</TableCell>
+                    <TableCell>{product.cost_price}</TableCell>
+                    <TableCell>{product.supplier?.name || 'N/A'}</TableCell>
                     <TableCell>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            Add Stock
+                      <div className="flex space-x-2">
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(product)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleDelete(product.id)}>
+                          <Trash2 className="h-4 w-4" />
                           </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Add Stock - {product.name}</DialogTitle>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="stock-date" className="text-right">
-                                Date
-                              </Label>
-                              <Input
-                                id="stock-date"
-                                type="date"
-                                className="col-span-3"
-                                defaultValue={new Date().toISOString().split("T")[0]}
-                              />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="add-quantity" className="text-right">
-                                Quantity
-                              </Label>
-                              <Input id="add-quantity" type="number" className="col-span-3" placeholder="0" />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="cost" className="text-right">
-                                Cost Price (GH₵)
-                              </Label>
-                              <Input
-                                id="cost"
-                                type="number"
-                                className="col-span-3"
-                                defaultValue={product.costPrice || ""}
-                                placeholder="0.00"
-                                disabled
-                              />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="supplier-select" className="text-right">
-                                Supplier
-                              </Label>
-                              <Select defaultValue={product.supplier !== "-" ? product.supplier : ""}>
-                                <SelectTrigger className="col-span-3">
-                                  <SelectValue placeholder="Select supplier" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Fresh Farms Ltd">Fresh Farms Ltd</SelectItem>
-                                  <SelectItem value="Ocean Fresh Co">Ocean Fresh Co</SelectItem>
-                                  <SelectItem value="Asia Import Ltd">Asia Import Ltd</SelectItem>
-                                  <SelectItem value="Local Suppliers">Local Suppliers</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
                           </div>
-                          <Button>Add to Stock</Button>
-                        </DialogContent>
-                      </Dialog>
                     </TableCell>
                   </TableRow>
                 ))}
+                {products.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      No products found. Add your first product to get started.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
+
+        {/* Edit Product Modal */}
+        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Product in Inventory</DialogTitle>
+              <DialogDescription>All fields marked with * are required.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleUpdate} className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-name" className="text-right">Product Name *</Label>
+                <div className="col-span-3">
+                  <Input id="edit-name" placeholder="Enter product name" value={data.name} onChange={e => setData('name', e.target.value)} required />
+                  {errors.name && <InputError message={errors.name} className="mt-2" />}
+                </div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-category" className="text-right">Category *</Label>
+                <div className="col-span-3">
+                  <Input id="edit-category" placeholder="e.g., Frozen, Chilled, Beverages" value={data.category} onChange={e => setData('category', e.target.value)} required />
+                  {errors.category && <InputError message={errors.category} className="mt-2" />}
+                </div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-cost_price" className="text-right">Cost Price (GH₵) *</Label>
+                <div className="col-span-3">
+                  <Input id="edit-cost_price" type="number" step="0.01" placeholder="0.00" value={data.cost_price} onChange={e => setData('cost_price', e.target.value)} required />
+                  {errors.cost_price && <InputError message={errors.cost_price} className="mt-2" />}
+                </div>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-supplier_id" className="text-right">Supplier *</Label>
+                <div className="col-span-3">
+                  <Select value={data.supplier_id} onValueChange={value => setData('supplier_id', value)} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select supplier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {suppliers.map((supplier) => (
+                        <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                          {supplier.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.supplier_id && <InputError message={errors.supplier_id} className="mt-2" />}
+                </div>
+              </div>
+              <Button type="submit" disabled={processing}>Update Product</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   )
 }
-
-export default ProductManagement; 

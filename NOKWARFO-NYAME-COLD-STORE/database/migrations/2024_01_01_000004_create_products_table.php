@@ -18,8 +18,11 @@ return new class extends Migration
             $table->decimal('cost_price', 10, 2)->default(0);
             $table->decimal('selling_price', 10, 2)->nullable();
             $table->text('description')->nullable();
+            $table->string('category')->nullable();
+            $table->unsignedBigInteger('supplier_id')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+            $table->foreign('supplier_id')->references('id')->on('suppliers')->onDelete('set null');
         });
     }
 

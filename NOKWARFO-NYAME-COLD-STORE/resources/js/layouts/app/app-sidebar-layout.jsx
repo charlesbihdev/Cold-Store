@@ -8,7 +8,7 @@ import { router } from '@inertiajs/react';
 const sectionToRoute = {
   dashboard: '/dashboard',
   products: '/products',
-  'product-management': '/product-management',
+  'product-management': '/Inventory-Management',
   'stock-control': '/stock-control',
   sales: '/sales',
   'daily-sales': '/daily-sales-report',

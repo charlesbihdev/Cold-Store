@@ -21,7 +21,7 @@ Route::get('/', function () {
 
 Route::resource('dashboard', DashboardController::class);
 Route::resource('products', ProductController::class);
-Route::resource('product-management', ProductManagementController::class);
+Route::resource('inventory-management', ProductManagementController::class);
 Route::resource('stock-control', StockControlController::class);
 Route::resource('sales', SaleController::class);
 Route::resource('daily-sales-report', DailySalesReportController::class);

@@ -9,16 +9,22 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Users, Edit, Trash2, Phone, Mail, MapPin, CreditCard } from "lucide-react"
 import AppLayout from '@/layouts/app-layout';
+import InputError from '@/components/InputError';
+import { useState } from 'react';
+import { router } from '@inertiajs/react';
 
 function Customers() {
   const { customers = [] } = usePage().props;
-  const { data, setData, post, processing, errors, reset } = useForm({
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const { data, setData, post, put, processing, errors, reset } = useForm({
     name: '',
     phone: '',
     email: '',
     address: '',
     credit_limit: '',
   });
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const breadcrumbs = [
     { title: 'Customers', href: '/customers' },
@@ -37,8 +43,47 @@ function Customers() {
   function handleSubmit(e) {
     e.preventDefault();
     post(route('customers.store'), {
-      onSuccess: () => reset(),
+      onSuccess: () => {
+        reset();
+        setIsAddModalOpen(false);
+      },
     });
+  }
+
+  function handleEdit(customer) {
+    setEditingCustomer(customer);
+    setData({
+      name: customer.name,
+      phone: customer.phone || '',
+      email: customer.email || '',
+      address: customer.address || '',
+      credit_limit: customer.credit_limit || '',
+    });
+    setIsEditModalOpen(true);
+  }
+
+  function handleUpdate(e) {
+    e.preventDefault();
+    put(route('customers.update', editingCustomer.id), {
+      onSuccess: () => {
+        reset();
+        setIsEditModalOpen(false);
+        setEditingCustomer(null);
+      },
+      preserveScroll: true,
+      preserveState: true,
+      only: ["customers", "errors", "flash"],
+    });
+  }
+
+  function handleDelete(customerId) {
+    if (confirm('Are you sure you want to delete this customer?')) {
+      router.delete(route('customers.destroy', customerId), {
+        preserveScroll: true,
+        preserveState: true,
+        only: ["customers", "flash"],
+      });
+    }
   }
 
   return (
@@ -46,9 +91,9 @@ function Customers() {
       <div className="p-6 space-y-6 bg-gray-100 min-h-screen">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Customers</h1>
-          <Dialog>
+          <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button onClick={() => setIsAddModalOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Customer
               </Button>
@@ -62,7 +107,7 @@ function Customers() {
                   <Label htmlFor="customer-name" className="text-right">
                     Customer Name
                   </Label>
-                  <Input id="customer-name" className="col-span-3" placeholder="Enter customer name" value={data.name} onChange={e => setData('name', e.target.value)} />
+                  <Input id="customer-name" className="col-span-3" placeholder="Enter customer name" value={data.name} onChange={e => setData('name', e.target.value)} required />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="phone" className="text-right">
@@ -204,10 +249,10 @@ function Customers() {
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => handleEdit(customer)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="outline" size="sm">
+                          <Button variant="outline" size="sm" onClick={() => handleDelete(customer.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -220,6 +265,48 @@ function Customers() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Customer Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Customer</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdate} className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-customer-name" className="text-right">
+                Customer Name
+              </Label>
+              <Input id="edit-customer-name" className="col-span-3" placeholder="Enter customer name" value={data.name} onChange={e => setData('name', e.target.value)} required />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-phone" className="text-right">
+                Phone
+              </Label>
+              <Input id="edit-phone" className="col-span-3" placeholder="+233 XX XXX XXXX" value={data.phone} onChange={e => setData('phone', e.target.value)} required />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-email" className="text-right">
+                Email
+              </Label>
+              <Input id="edit-email" type="email" className="col-span-3" placeholder="customer@email.com" value={data.email} onChange={e => setData('email', e.target.value)} required />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-address" className="text-right">
+                Address
+              </Label>
+              <Textarea id="edit-address" className="col-span-3" placeholder="Customer address" value={data.address} onChange={e => setData('address', e.target.value)} />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-credit-limit" className="text-right">
+                Credit Limit (GH₵)
+              </Label>
+              <Input id="edit-credit-limit" type="number" step="0.01" className="col-span-3" placeholder="0.00" value={data.credit_limit} onChange={e => setData('credit_limit', e.target.value)} />
+            </div>
+            <Button type="submit" disabled={processing}>Update Customer</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   )
 }

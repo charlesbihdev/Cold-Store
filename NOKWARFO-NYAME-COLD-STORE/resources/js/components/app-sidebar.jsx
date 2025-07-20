@@ -21,7 +21,7 @@ const menuItems = [
   { id: "products.index", label: "Products", icon: Package, section: "setup" },
   { id: "suppliers.index", label: "Suppliers", icon: Users, section: "setup" },
   { id: "customers.index", label: "Customers", icon: Users, section: "setup" },
-  { id: "product-management.index", label: "Inventory Management", icon: Archive, section: "inventory" },
+  { id: "inventory-management.index", label: "Inventory Management", icon: Archive, section: "inventory" },
   { id: "stock-control.index", label: "Stock Control", icon: Truck, section: "inventory" },
   { id: "sales.index", label: "Sales & Transactions", icon: ShoppingCart, section: "sales" },
   { id: "sales-transactions.index", label: "Sales Transactions", icon: ShoppingCart, section: "sales" },

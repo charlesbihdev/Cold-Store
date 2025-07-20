@@ -23,7 +23,6 @@ function Products({ products = [], suppliers = [], errors = {} }) {
     category: '',
     selling_price: '',
     cost_price: '',
-    stock_quantity: '',
     supplier_id: '',
   });
 
@@ -52,7 +51,6 @@ function Products({ products = [], suppliers = [], errors = {} }) {
       category: product.category,
       selling_price: product.selling_price,
       cost_price: product.cost_price,
-      stock_quantity: product.stock_quantity,
       supplier_id: product.supplier_id ? product.supplier_id.toString() : '',
     });
     setIsEditModalOpen(true);
@@ -85,6 +83,15 @@ function Products({ products = [], suppliers = [], errors = {} }) {
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <div className="p-6 space-y-6 bg-gray-100 min-h-screen">
+        {/* Info alert for users about catalog vs inventory */}
+        <div className="bg-blue-50 border border-blue-200 text-blue-900 rounded p-4 mb-4">
+          <strong>Note:</strong> This page is for managing your <b>product catalog</b> only.<br />
+          <ul className="list-disc pl-6 mt-2">
+            <li>Add, edit, or remove product details (name, price, supplier, etc.) here.</li>
+            <li><b>All stock changes (add, remove, adjust) are done in <u>Inventory Management</u>, not here.</b></li>
+            <li>Think of this as your “master list” of what you could possibly have in your store.</li>
+          </ul>
+        </div>
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold">Products</h1>
           
@@ -156,17 +163,6 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                     <Input id="cost_price" type="number" step="0.01" placeholder="0.00" value={data.cost_price} onChange={e => setData('cost_price', e.target.value)} required />
                     {errors.cost_price && (
                       <InputError message={errors.cost_price} className="mt-2" />
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="stock_quantity" className="text-right">
-                    Stock Quantity *
-                  </Label>
-                  <div className="col-span-3">
-                    <Input id="stock_quantity" type="number" placeholder="0" value={data.stock_quantity} onChange={e => setData('stock_quantity', e.target.value)} required />
-                    {errors.stock_quantity && (
-                      <InputError message={errors.stock_quantity} className="mt-2" />
                     )}
                   </div>
                 </div>
@@ -264,17 +260,6 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                 </div>
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-stock_quantity" className="text-right">
-                  Stock Quantity *
-                </Label>
-                <div className="col-span-3">
-                  <Input id="edit-stock_quantity" type="number" placeholder="0" value={data.stock_quantity} onChange={e => setData('stock_quantity', e.target.value)} required />
-                  {errors.stock_quantity && (
-                    <InputError message={errors.stock_quantity} className="mt-2" />
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="edit-supplier" className="text-right">
                   Supplier *
                 </Label>
@@ -317,7 +302,6 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                   <TableHead>Category</TableHead>
                   <TableHead>Selling Price</TableHead>
                   <TableHead>Cost Price</TableHead>
-                  <TableHead>Stock</TableHead>
                   <TableHead>Supplier</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
@@ -330,11 +314,6 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                     <TableCell>{product.category}</TableCell>
                     <TableCell>GH₵{parseFloat(product.selling_price).toFixed(2)}</TableCell>
                     <TableCell>GH₵{parseFloat(product.cost_price).toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Badge variant={product.stock_quantity < 10 ? "destructive" : "default"}>
-                        {product.stock_quantity}
-                      </Badge>
-                    </TableCell>
                     <TableCell>{product.supplier?.name || 'N/A'}</TableCell>
                     <TableCell>
                       <Badge variant={product.is_active ? "default" : "secondary"}>
@@ -355,7 +334,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                 ))}
                 {products.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No products found. Add your first product to get started.
                     </TableCell>
                   </TableRow>

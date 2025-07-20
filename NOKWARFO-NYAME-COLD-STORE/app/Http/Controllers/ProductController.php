@@ -28,7 +28,6 @@ class ProductController extends Controller
             'category' => 'required|string|max:255',
             'selling_price' => 'required|numeric|min:0',
             'cost_price' => 'required|numeric|min:0',
-            'stock_quantity' => 'required|integer|min:0',
             'supplier_id' => 'required|exists:suppliers,id',
         ]);
 
@@ -48,7 +47,6 @@ class ProductController extends Controller
             'category' => 'required|string|max:255',
             'selling_price' => 'required|numeric|min:0',
             'cost_price' => 'required|numeric|min:0',
-            'stock_quantity' => 'required|integer|min:0',
             'supplier_id' => 'required|exists:suppliers,id',
         ]);
 

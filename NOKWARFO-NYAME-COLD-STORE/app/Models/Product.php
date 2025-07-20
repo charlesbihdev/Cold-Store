@@ -17,7 +17,6 @@ class Product extends Model
         'category',
         'cost_price',
         'selling_price',
-        'stock_quantity',
         'supplier_id',
         'is_active',
     ];
@@ -25,7 +24,6 @@ class Product extends Model
     protected $casts = [
         'cost_price' => 'decimal:2',
         'selling_price' => 'decimal:2',
-        'stock_quantity' => 'integer',
         'is_active' => 'boolean',
     ];
 
