@@ -1,0 +1,135 @@
+import { useState } from 'react';
+import { Link } from '@inertiajs/react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { 
+    ChevronLeft, 
+    ChevronRight, 
+    Home, 
+    Package, 
+    Users, 
+    ShoppingCart, 
+    BarChart3, 
+    Settings,
+    Menu,
+    X
+} from 'lucide-react';
+import ToastProvider from '@/components/ToastProvider';
+import { SidebarProvider } from '@/components/ui/sidebar';
+
+const navigation = [
+    { name: 'Dashboard', href: '/dashboard', icon: Home },
+    { name: 'Products', href: '/products', icon: Package },
+    { name: 'Suppliers', href: '/suppliers', icon: Users },
+    { name: 'Sales', href: '/sales', icon: ShoppingCart },
+    { name: 'Reports', href: '/reports', icon: BarChart3 },
+    { name: 'Settings', href: '/settings', icon: Settings },
+];
+
+export default function AppLayout({ children, breadcrumbs = [] }) {
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    return (
+        <SidebarProvider>
+            <ToastProvider>
+                <div className="min-h-screen w-full bg-gray-50 lg:flex">
+                    {/* Mobile sidebar */}
+                    <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
+                        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
+                        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
+                            <div className="flex h-16 items-center justify-between px-4">
+                                <h1 className="text-xl font-bold text-gray-900">Cold Store</h1>
+                                <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)}>
+                                    <X className="h-5 w-5" />
+                                </Button>
+                            </div>
+                            <nav className="flex-1 space-y-1 px-2 py-4">
+                                {navigation.map((item) => {
+                                    const Icon = item.icon;
+                                    return (
+                                        <Link
+                                            key={item.name}
+                                            href={item.href}
+                                            className="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                        >
+                                            <Icon className="mr-3 h-5 w-5" />
+                                            {item.name}
+                                        </Link>
+                                    );
+                                })}
+                            </nav>
+                        </div>
+                    </div>
+
+                    {/* Desktop sidebar */}
+                    <div className="hidden lg:flex lg:w-64 lg:flex-col flex-shrink-0">
+                        <div className="flex flex-col flex-grow bg-white border-r border-gray-200">
+                            <div className="flex h-16 items-center px-4">
+                                <h1 className="text-xl font-bold text-gray-900">Cold Store</h1>
+                            </div>
+                            <nav className="flex-1 space-y-1 px-2 py-4">
+                                {navigation.map((item) => {
+                                    const Icon = item.icon;
+                                    return (
+                                        <Link
+                                            key={item.name}
+                                            href={item.href}
+                                            className="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                        >
+                                            <Icon className="mr-3 h-5 w-5" />
+                                            {item.name}
+                                        </Link>
+                                    );
+                                })}
+                            </nav>
+                        </div>
+                    </div>
+
+                    {/* Main content */}
+                    <div className="flex-1 flex flex-col min-w-0">
+                        {/* Top bar */}
+                        <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="lg:hidden"
+                                onClick={() => setSidebarOpen(true)}
+                            >
+                                <Menu className="h-5 w-5" />
+                            </Button>
+
+                            {/* Breadcrumbs */}
+                            <nav className="flex" aria-label="Breadcrumb">
+                                <ol className="flex items-center space-x-4">
+                                    {breadcrumbs.map((crumb, index) => (
+                                        <li key={index}>
+                                            <div className="flex items-center">
+                                                {index > 0 && <ChevronRight className="h-4 w-4 text-gray-400" />}
+                                                {index === breadcrumbs.length - 1 ? (
+                                                    <span className="text-sm font-medium text-gray-500">{crumb.title}</span>
+                                                ) : (
+                                                    <Link
+                                                        href={crumb.href}
+                                                        className="text-sm font-medium text-gray-500 hover:text-gray-700"
+                                                    >
+                                                        {crumb.title}
+                                                    </Link>
+                                                )}
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ol>
+                            </nav>
+                        </div>
+
+                        {/* Page content */}
+                        <main className="py-6">
+            {children}
+                        </main>
+                    </div>
+                </div>
+            </ToastProvider>
+        </SidebarProvider>
+    );
+}
+
