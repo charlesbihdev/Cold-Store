@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import ToastProvider from '@/components/ToastProvider';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import AppSidebar from '@/components/app-sidebar';
 
 const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
@@ -28,6 +29,7 @@ const navigation = [
 
 export default function AppLayout({ children, breadcrumbs = [] }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [activeSection, setActiveSection] = useState('dashboard');
 
     return (
         <SidebarProvider>
@@ -37,52 +39,13 @@ export default function AppLayout({ children, breadcrumbs = [] }) {
                     <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
                         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
                         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
-                            <div className="flex h-16 items-center justify-between px-4">
-                                <h1 className="text-xl font-bold text-gray-900">Cold Store</h1>
-                                <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(false)}>
-                                    <X className="h-5 w-5" />
-                                </Button>
-                            </div>
-                            <nav className="flex-1 space-y-1 px-2 py-4">
-                                {navigation.map((item) => {
-                                    const Icon = item.icon;
-                                    return (
-                                        <Link
-                                            key={item.name}
-                                            href={item.href}
-                                            className="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                                        >
-                                            <Icon className="mr-3 h-5 w-5" />
-                                            {item.name}
-                                        </Link>
-                                    );
-                                })}
-                            </nav>
+                            <AppSidebar activeSection={activeSection} setActiveSection={setActiveSection} />
                         </div>
                     </div>
 
                     {/* Desktop sidebar */}
                     <div className="hidden lg:flex lg:w-64 lg:flex-col flex-shrink-0">
-                        <div className="flex flex-col flex-grow bg-white border-r border-gray-200">
-                            <div className="flex h-16 items-center px-4">
-                                <h1 className="text-xl font-bold text-gray-900">Cold Store</h1>
-                            </div>
-                            <nav className="flex-1 space-y-1 px-2 py-4">
-                                {navigation.map((item) => {
-                                    const Icon = item.icon;
-                                    return (
-                                        <Link
-                                            key={item.name}
-                                            href={item.href}
-                                            className="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                                        >
-                                            <Icon className="mr-3 h-5 w-5" />
-                                            {item.name}
-                                        </Link>
-                                    );
-                                })}
-                            </nav>
-                        </div>
+                        <AppSidebar activeSection={activeSection} setActiveSection={setActiveSection} />
                     </div>
 
                     {/* Main content */}

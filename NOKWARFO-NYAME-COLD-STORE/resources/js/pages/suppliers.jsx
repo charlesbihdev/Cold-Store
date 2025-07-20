@@ -101,7 +101,7 @@ function Suppliers({ suppliers = [], errors = {} }) {
                     Supplier Name *
                   </Label>
                   <div className="col-span-3">
-                    <Input id="name" placeholder="Enter supplier name" value={data.name} onChange={e => setData('name', e.target.value)} />
+                    <Input id="name" placeholder="Enter supplier name" value={data.name} onChange={e => setData('name', e.target.value)} required />
                     {errors.name && (
                       <InputError message={errors.name} className="mt-2" />
                     )}
@@ -150,7 +150,7 @@ function Suppliers({ suppliers = [], errors = {} }) {
                   Supplier Name *
                 </Label>
                 <div className="col-span-3">
-                  <Input id="edit-name" placeholder="Enter supplier name" value={data.name} onChange={e => setData('name', e.target.value)} />
+                  <Input id="edit-name" placeholder="Enter supplier name" value={data.name} onChange={e => setData('name', e.target.value)} required />
                   {errors.name && (
                     <InputError message={errors.name} className="mt-2" />
                   )}

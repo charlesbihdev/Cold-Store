@@ -53,7 +53,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
       selling_price: product.selling_price,
       cost_price: product.cost_price,
       stock_quantity: product.stock_quantity,
-      supplier_id: product.supplier_id,
+      supplier_id: product.supplier_id ? product.supplier_id.toString() : '',
     });
     setIsEditModalOpen(true);
   }
@@ -109,7 +109,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                     Product Name *
                   </Label>
                   <div className="col-span-3">
-                    <Input id="name" placeholder="Enter product name" value={data.name} onChange={e => setData('name', e.target.value)} />
+                    <Input id="name" placeholder="Enter product name" value={data.name} onChange={e => setData('name', e.target.value)} required />
                     {errors.name && (
                       <InputError message={errors.name} className="mt-2" />
                     )}
@@ -131,7 +131,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                     Category *
                   </Label>
                   <div className="col-span-3">
-                    <Input id="category" placeholder="e.g., Frozen, Chilled, Beverages" value={data.category} onChange={e => setData('category', e.target.value)} />
+                    <Input id="category" placeholder="e.g., Frozen, Chilled, Beverages" value={data.category} onChange={e => setData('category', e.target.value)} required />
                     {errors.category && (
                       <InputError message={errors.category} className="mt-2" />
                     )}
@@ -142,7 +142,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                     Selling Price (GH₵) *
                   </Label>
                   <div className="col-span-3">
-                    <Input id="selling_price" type="number" step="0.01" placeholder="0.00" value={data.selling_price} onChange={e => setData('selling_price', e.target.value)} />
+                    <Input id="selling_price" type="number" step="0.01" placeholder="0.00" value={data.selling_price} onChange={e => setData('selling_price', e.target.value)} required />
                     {errors.selling_price && (
                       <InputError message={errors.selling_price} className="mt-2" />
                     )}
@@ -153,7 +153,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                     Cost Price (GH₵) *
                   </Label>
                   <div className="col-span-3">
-                    <Input id="cost_price" type="number" step="0.01" placeholder="0.00" value={data.cost_price} onChange={e => setData('cost_price', e.target.value)} />
+                    <Input id="cost_price" type="number" step="0.01" placeholder="0.00" value={data.cost_price} onChange={e => setData('cost_price', e.target.value)} required />
                     {errors.cost_price && (
                       <InputError message={errors.cost_price} className="mt-2" />
                     )}
@@ -164,7 +164,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                     Stock Quantity *
                   </Label>
                   <div className="col-span-3">
-                    <Input id="stock_quantity" type="number" placeholder="0" value={data.stock_quantity} onChange={e => setData('stock_quantity', e.target.value)} />
+                    <Input id="stock_quantity" type="number" placeholder="0" value={data.stock_quantity} onChange={e => setData('stock_quantity', e.target.value)} required />
                     {errors.stock_quantity && (
                       <InputError message={errors.stock_quantity} className="mt-2" />
                     )}
@@ -175,7 +175,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                     Supplier *
                   </Label>
                   <div className="col-span-3">
-                    <Select value={data.supplier_id} onValueChange={value => setData('supplier_id', value)}>
+                    <Select value={data.supplier_id} onValueChange={value => setData('supplier_id', value)} required>
                       <SelectTrigger>
                         <SelectValue placeholder="Select supplier" />
                       </SelectTrigger>
@@ -213,7 +213,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                   Product Name *
                 </Label>
                 <div className="col-span-3">
-                  <Input id="edit-name" placeholder="Enter product name" value={data.name} onChange={e => setData('name', e.target.value)} />
+                  <Input id="edit-name" placeholder="Enter product name" value={data.name} onChange={e => setData('name', e.target.value)} required />
                   {errors.name && (
                     <InputError message={errors.name} className="mt-2" />
                   )}
@@ -235,7 +235,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                   Category *
                 </Label>
                 <div className="col-span-3">
-                  <Input id="edit-category" placeholder="e.g., Frozen, Chilled, Beverages" value={data.category} onChange={e => setData('category', e.target.value)} />
+                  <Input id="edit-category" placeholder="e.g., Frozen, Chilled, Beverages" value={data.category} onChange={e => setData('category', e.target.value)} required />
                   {errors.category && (
                     <InputError message={errors.category} className="mt-2" />
                   )}
@@ -246,7 +246,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                   Selling Price (GH₵) *
                 </Label>
                 <div className="col-span-3">
-                  <Input id="edit-selling_price" type="number" step="0.01" placeholder="0.00" value={data.selling_price} onChange={e => setData('selling_price', e.target.value)} />
+                  <Input id="edit-selling_price" type="number" step="0.01" placeholder="0.00" value={data.selling_price} onChange={e => setData('selling_price', e.target.value)} required />
                   {errors.selling_price && (
                     <InputError message={errors.selling_price} className="mt-2" />
                   )}
@@ -257,7 +257,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                   Cost Price (GH₵) *
                 </Label>
                 <div className="col-span-3">
-                  <Input id="edit-cost_price" type="number" step="0.01" placeholder="0.00" value={data.cost_price} onChange={e => setData('cost_price', e.target.value)} />
+                  <Input id="edit-cost_price" type="number" step="0.01" placeholder="0.00" value={data.cost_price} onChange={e => setData('cost_price', e.target.value)} required />
                   {errors.cost_price && (
                     <InputError message={errors.cost_price} className="mt-2" />
                   )}
@@ -268,7 +268,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                   Stock Quantity *
                 </Label>
                 <div className="col-span-3">
-                  <Input id="edit-stock_quantity" type="number" placeholder="0" value={data.stock_quantity} onChange={e => setData('stock_quantity', e.target.value)} />
+                  <Input id="edit-stock_quantity" type="number" placeholder="0" value={data.stock_quantity} onChange={e => setData('stock_quantity', e.target.value)} required />
                   {errors.stock_quantity && (
                     <InputError message={errors.stock_quantity} className="mt-2" />
                   )}
@@ -279,7 +279,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                   Supplier *
                 </Label>
                 <div className="col-span-3">
-                  <Select value={data.supplier_id} onValueChange={value => setData('supplier_id', value)}>
+                  <Select value={data.supplier_id} onValueChange={value => setData('supplier_id', value)} required>
                     <SelectTrigger>
                       <SelectValue placeholder="Select supplier" />
                     </SelectTrigger>
