@@ -63,6 +63,9 @@ class SalesTransactionController extends Controller
             'payment_type' => 'required|in:cash,credit,mixed,partial',
         ]);
 
+        // dd('Validated:', $validated);
+
+
         $subtotal = collect($validated['items'])->sum('total');
         $total = $subtotal; // Add tax/discount logic if needed
         $amount_paid = $validated['amount_paid'];

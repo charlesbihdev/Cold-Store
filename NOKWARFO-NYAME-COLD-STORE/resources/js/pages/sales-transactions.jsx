@@ -7,130 +7,127 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { router, useForm, usePage } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react'; // Added for useEffect
 
-function SalesTransactions() {
-    const { sales_transactions = [], products = [], customers = [] } = usePage().props;
+function SalesTransactions({ sales_transactions = [], products = [], customers = [] }) {
     const [open, setOpen] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
-    // Cart-style items state
-    const [items, setItems] = useState([{ product_id: '', qty: '', unit_price: '', total: '' }]);
-    // Payment state
-    const [amountPaid, setAmountPaid] = useState('');
-    const [dueDate, setDueDate] = useState('');
-    const [paymentType, setPaymentType] = useState('cash');
-    const form = useForm({
+    // Form handling with destructured useForm
+    const { data, setData, post, processing, errors, reset, setError } = useForm({
         customer_id: '',
-        items: items,
+        items: [{ product_id: '', qty: '', unit_cost: '', total: '' }],
         amount_paid: '',
         due_date: '',
         payment_type: 'cash',
     });
 
-    // Update form items when items state changes
-    useEffect(() => {
-        form.setData('items', items);
-    }, [items]);
-    useEffect(() => {
-        form.setData('amount_paid', amountPaid);
-    }, [amountPaid]);
-    useEffect(() => {
-        form.setData('due_date', dueDate);
-    }, [dueDate]);
-    useEffect(() => {
-        form.setData('payment_type', paymentType);
-    }, [paymentType]);
+    // console.log(errors);
+
+    // Remove unnecessary useEffects since we're using form data directly
 
     // Calculate running total
-    const runningTotal = items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+    const runningTotal = data.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
 
-    // Ensure amountPaid is always runningTotal for cash
+    // Ensure amount_paid is always runningTotal for cash
     useEffect(() => {
-        if (paymentType === 'cash') {
-            setAmountPaid(runningTotal.toString());
-            form.setError('amount_paid', undefined);
+        if (data.payment_type === 'cash') {
+            setData('amount_paid', runningTotal.toString());
         }
-        if (paymentType === 'credit') {
-            setAmountPaid('0');
-            form.setError('amount_paid', undefined);
+        if (data.payment_type === 'credit') {
+            setData('amount_paid', '0');
         }
-    }, [paymentType, runningTotal]);
+    }, [data.payment_type, runningTotal]);
 
     const handleOpen = () => {
-        form.reset();
-        setItems([{ product_id: '', qty: '', unit_price: '', total: '' }]);
-        setAmountPaid('');
-        setDueDate('');
-        setPaymentType('cash');
+        reset();
+        setData({
+            customer_id: '',
+            items: [{ product_id: '', qty: '', unit_cost: '', total: '' }],
+            amount_paid: '',
+            due_date: '',
+            payment_type: 'cash',
+        });
         setOpen(true);
     };
     const handleClose = () => {
         setOpen(false);
-        form.reset();
-        setItems([{ product_id: '', qty: '', unit_price: '', total: '' }]);
-        setAmountPaid('');
-        setDueDate('');
-        setPaymentType('cash');
-    };
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        form.post('/sales-transactions', {
-            onSuccess: () => handleClose(),
+        reset();
+        setData({
+            customer_id: '',
+            items: [{ product_id: '', qty: '', unit_cost: '', total: '' }],
+            amount_paid: '',
+            due_date: '',
+            payment_type: 'cash',
         });
     };
+    // const handleSubmit = (e) => {
+    //     e.preventDefault();
+    //     post(route('sales-transactions.store'), {
+    //         onSuccess: () => {
+    //             reset();
+    //             setOpen(false);
+    //         },
+    //         preserveScroll: true,
+    //         preserveState: true,
+    //         only: ['sales_transactions', 'errors', 'flash'],
+    //     });
+    // };
     const handleDelete = (id) => {
         if (window.confirm('Are you sure you want to delete this transaction?')) {
-            router.delete(`/sales-transactions/${id}`);
+            router.delete(route('sales-transactions.destroy', { id }));
         }
     };
     // Cart logic
     const handleItemChange = (idx, field, value) => {
-        const newItems = items.map((item, i) =>
+        const newItems = data.items.map((item, i) =>
             i === idx
                 ? {
                       ...item,
                       [field]: value,
                       total:
-                          field === 'qty' || field === 'unit_price'
+                          field === 'qty' || field === 'unit_cost'
                               ? field === 'qty'
-                                  ? value * (item.unit_price || 0)
+                                  ? value * (item.unit_cost || 0)
                                   : (item.qty || 0) * value
                               : item.total,
                   }
                 : item,
         );
-        setItems(newItems);
+        setData('items', newItems);
     };
     const addItem = () => {
-        setItems([...items, { product_id: '', qty: '', unit_price: '', total: '' }]);
+        setData('items', [...data.items, { product_id: '', qty: '', unit_cost: '', total: '' }]);
     };
     const removeItem = (idx) => {
-        if (items.length === 1) return;
-        setItems(items.filter((_, i) => i !== idx));
+        if (data.items.length === 1) return;
+        setData(
+            'items',
+            data.items.filter((_, i) => i !== idx),
+        );
     };
     // Payment logic
     const handleAmountPaidChange = (v) => {
-        setAmountPaid(v);
-        if (paymentType === 'partial') {
+        setData('amount_paid', v);
+        if (data.payment_type === 'partial') {
             if (parseFloat(v) <= 0 || parseFloat(v) >= runningTotal) {
-                form.setError('amount_paid', 'For partial payments, the amount paid must be greater than 0 and less than the total.');
+                setError('amount_paid', 'For partial payments, the amount paid must be greater than 0 and less than the total.');
             } else {
-                form.setError('amount_paid', undefined);
+                setError('amount_paid', undefined);
             }
         }
     };
     const handlePaymentTypeChange = (v) => {
-        setPaymentType(v);
+        setData('payment_type', v);
         if (v === 'credit') {
-            setAmountPaid('0');
-            form.setError('amount_paid', undefined);
+            setData('amount_paid', '0');
+            setError('amount_paid', undefined);
         } else if (v === 'cash') {
-            setAmountPaid(runningTotal.toString());
-            form.setError('amount_paid', undefined);
+            setData('amount_paid', runningTotal.toString());
+            setError('amount_paid', undefined);
         } else if (v === 'partial') {
-            setAmountPaid('');
-            form.setError('amount_paid', undefined);
+            setData('amount_paid', '');
+            setError('amount_paid', undefined);
         }
     };
 
@@ -200,7 +197,7 @@ function SalesTransactions() {
                                     <TableHead>Customer</TableHead>
                                     <TableHead>Product</TableHead>
                                     <TableHead>Quantity</TableHead>
-                                    <TableHead>Unit Price</TableHead>
+                                    <TableHead>Unit Cost</TableHead>
                                     <TableHead>Total</TableHead>
                                     <TableHead>Payment Type</TableHead>
                                     <TableHead>Amount Paid</TableHead>
@@ -227,7 +224,7 @@ function SalesTransactions() {
                                         </TableCell>
                                         <TableCell>
                                             {transaction.sale_items.map((item, idx) => (
-                                                <div key={idx}>GH₵{parseFloat(item.unit_price).toFixed(2)}</div>
+                                                <div key={idx}>GH₵{parseFloat(item.unit_cost).toFixed(2)}</div>
                                             ))}
                                         </TableCell>
                                         <TableCell className="font-medium">
@@ -291,22 +288,22 @@ function SalesTransactions() {
                             onSubmit={(e) => {
                                 e.preventDefault();
                                 // Client-side validation before submit
-                                if (paymentType === 'cash' && parseFloat(amountPaid) !== runningTotal) {
-                                    form.setError('amount_paid', 'For cash payments, the amount paid must equal the total.');
+                                if (data.payment_type === 'cash' && parseFloat(data.amount_paid) !== runningTotal) {
+                                    setError('amount_paid', 'For cash payments, the amount paid must equal the total.');
                                     return;
                                 }
-                                if (paymentType === 'credit' && parseFloat(amountPaid) !== 0) {
-                                    form.setError('amount_paid', 'For credit sales, the amount paid must be 0.');
+                                if (data.payment_type === 'credit' && parseFloat(data.amount_paid) !== 0) {
+                                    setError('amount_paid', 'For credit sales, the amount paid must be 0.');
                                     return;
                                 }
-                                if (paymentType === 'partial' && (parseFloat(amountPaid) <= 0 || parseFloat(amountPaid) >= runningTotal)) {
-                                    form.setError(
-                                        'amount_paid',
-                                        'For partial payments, the amount paid must be greater than 0 and less than the total.',
-                                    );
+                                if (
+                                    data.payment_type === 'partial' &&
+                                    (parseFloat(data.amount_paid) <= 0 || parseFloat(data.amount_paid) >= runningTotal)
+                                ) {
+                                    setError('amount_paid', 'For partial payments, the amount paid must be greater than 0 and less than the total.');
                                     return;
                                 }
-                                form.post('/sales-transactions', {
+                                post(route('sales-transactions.store'), {
                                     onSuccess: () => handleClose(),
                                 });
                             }}
@@ -314,25 +311,25 @@ function SalesTransactions() {
                         >
                             <div>
                                 <label className="mb-1 block font-medium">Customer</label>
-                                <Select value={form.data.customer_id} onValueChange={(v) => form.setData('customer_id', v)}>
+                                <Select value={data.customer_id} onValueChange={(v) => setData('customer_id', v)}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select customer" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {customers.map((c) => (
-                                            <SelectItem key={c.id} value={String(c.id)}>
+                                            <SelectItem key={c.id} value={String(c.id)} required>
                                                 {c.name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                {form.errors.customer_id && <div className="mt-1 text-xs text-red-500">{form.errors.customer_id}</div>}
+                                {errors.customer_id && <InputError message={errors.customer_id} className="mt-2" />}
                             </div>
                             {/* Cart Items */}
                             <div>
                                 <label className="mb-1 block font-medium">Items</label>
                                 <div className="max-h-64 space-y-2 overflow-y-auto">
-                                    {items.map((item, idx) => (
+                                    {data.items.map((item, idx) => (
                                         <div key={idx} className="flex w-full flex-wrap items-end gap-2">
                                             <div className="min-w-[120px] flex-1">
                                                 <Select value={item.product_id} onValueChange={(v) => handleItemChange(idx, 'product_id', v)}>
@@ -362,9 +359,9 @@ function SalesTransactions() {
                                                     type="number"
                                                     min="0"
                                                     step="0.01"
-                                                    placeholder="Unit Price"
-                                                    value={item.unit_price}
-                                                    onChange={(e) => handleItemChange(idx, 'unit_price', e.target.value)}
+                                                    placeholder="Unit Cost"
+                                                    value={item.unit_cost}
+                                                    onChange={(e) => handleItemChange(idx, 'unit_cost', e.target.value)}
                                                 />
                                             </div>
                                             <div className="w-24 min-w-[90px]">
@@ -376,7 +373,7 @@ function SalesTransactions() {
                                                 size="sm"
                                                 className="text-white"
                                                 onClick={() => removeItem(idx)}
-                                                disabled={items.length === 1}
+                                                disabled={data.items.length === 1}
                                             >
                                                 Remove
                                             </Button>
@@ -386,7 +383,16 @@ function SalesTransactions() {
                                         Add Item
                                     </Button>
                                 </div>
-                                {form.errors['items'] && <div className="mt-1 text-xs text-red-500">{form.errors['items']}</div>}
+                                {Object.keys(errors).map((key) => {
+                                    if (key.startsWith('items')) {
+                                        return (
+                                            <div key={key} className="mt-1 text-xs text-red-500">
+                                                {errors[key].replace(/items\.\d+\./, '')}
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })}
                             </div>
                             {/* Running Total */}
                             <div className="text-lg font-bold">Total: GH₵{runningTotal.toFixed(2)}</div>
@@ -394,7 +400,7 @@ function SalesTransactions() {
                             <div className="flex gap-2">
                                 <div className="flex-1">
                                     <label className="mb-1 block font-medium">Payment Type</label>
-                                    <Select value={paymentType} onValueChange={handlePaymentTypeChange}>
+                                    <Select value={data.payment_type} onValueChange={handlePaymentTypeChange}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select payment type" />
                                         </SelectTrigger>
@@ -404,26 +410,26 @@ function SalesTransactions() {
                                             <SelectItem value="partial">Partial</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                    {form.errors.payment_type && <div className="mt-1 text-xs text-red-500">{form.errors.payment_type}</div>}
+                                    {errors.payment_type && <div className="mt-1 text-xs text-red-500">{errors.payment_type}</div>}
                                 </div>
                                 <div className="flex-1">
                                     <label className="mb-1 block font-medium">Amount Paid</label>
                                     <Input
                                         type="number"
-                                        min={paymentType === 'partial' ? 1 : 0}
-                                        max={paymentType === 'partial' ? runningTotal - 1 : runningTotal}
+                                        min={data.payment_type === 'partial' ? 1 : 0}
+                                        max={data.payment_type === 'partial' ? runningTotal - 1 : runningTotal}
                                         step="0.01"
-                                        value={amountPaid}
+                                        value={data.amount_paid}
                                         onChange={(e) => handleAmountPaidChange(e.target.value)}
-                                        disabled={paymentType === 'credit' || paymentType === 'cash'}
+                                        disabled={data.payment_type === 'credit' || data.payment_type === 'cash'}
                                     />
-                                    {form.errors.amount_paid && <InputError message={form.errors.amount_paid} className="mt-2" />}
+                                    {errors.amount_paid && <InputError message={errors.amount_paid} className="mt-2" />}
                                 </div>
-                                {paymentType !== 'cash' && (
+                                {data.payment_type !== 'cash' && (
                                     <div className="flex-1">
                                         <label className="mb-1 block font-medium">Due Date</label>
-                                        <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-                                        {form.errors.due_date && <div className="mt-1 text-xs text-red-500">{form.errors.due_date}</div>}
+                                        <Input type="date" value={data.due_date} onChange={(e) => setData('due_date', e.target.value)} />
+                                        {errors.due_date && <div className="mt-1 text-xs text-red-500">{errors.due_date}</div>}
                                     </div>
                                 )}
                             </div>
@@ -431,7 +437,7 @@ function SalesTransactions() {
                                 <Button type="button" variant="secondary" onClick={handleClose}>
                                     Cancel
                                 </Button>
-                                <Button type="submit">{form.processing ? 'Saving..' : 'Save'}</Button>
+                                <Button type="submit">{processing ? 'Saving..' : 'Save'}</Button>
                             </DialogFooter>
                         </form>
                     </DialogContent>
