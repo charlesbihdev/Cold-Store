@@ -21,9 +21,7 @@ Route::get('/', function () {
 
 Route::resource('dashboard', DashboardController::class);
 Route::resource('products', ProductController::class);
-Route::resource('inventory-management', ProductManagementController::class);
 Route::resource('stock-control', StockControlController::class);
-Route::resource('sales', SaleController::class);
 Route::resource('daily-sales-report', DailySalesReportController::class);
 Route::resource('credit-collection', CreditCollectionController::class);
 Route::resource('profit-analysis', ProfitAnalysisController::class);
@@ -33,5 +31,5 @@ Route::resource('customers', CustomerController::class);
 Route::resource('daily-collections', DailyCollectionsController::class);
 Route::resource('sales-transactions', SalesTransactionController::class);
 
-require __DIR__.'/settings.php';
-require __DIR__.'/auth.php';
+require __DIR__ . '/settings.php';
+require __DIR__ . '/auth.php';

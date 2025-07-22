@@ -10,22 +10,34 @@ class CustomerController extends Controller
 {
     public function index()
     {
-        $customers = Customer::orderByDesc('created_at')->get();
+        $customers = Customer::with('sales')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $customers->transform(function ($customer) {
+            return [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'phone' => $customer->phone,
+                'address' => $customer->address,
+                'debt' => $customer->debt, // total amount owed
+            ];
+        });
         return Inertia::render('customers', [
             'customers' => $customers,
         ]);
     }
+
+
 
     public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:255|unique:customers,phone',
-            'email' => 'required|email|max:255|unique:customers,email',
+            'email' => 'nullable|email|max:255|unique:customers,email',
             'address' => 'nullable|string',
-            'credit_limit' => 'nullable|numeric|min:0',
         ]);
-        $validated['current_balance'] = 0;
         $validated['is_active'] = true;
         Customer::create($validated);
         return redirect()->route('customers.index')->with('success', 'Customer created successfully.');
@@ -36,9 +48,8 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:255|unique:customers,phone,' . $customer->id,
-            'email' => 'required|email|max:255|unique:customers,email,' . $customer->id,
+            'email' => 'nullable|email|max:255|unique:customers,email,' . $customer->id,
             'address' => 'nullable|string',
-            'credit_limit' => 'nullable|numeric|min:0',
         ]);
         $customer->update($validated);
         return redirect()->route('customers.index')->with('success', 'Customer updated successfully.');
@@ -49,4 +60,4 @@ class CustomerController extends Controller
         $customer->delete();
         return redirect()->route('customers.index')->with('success', 'Customer deleted successfully.');
     }
-} 
+}

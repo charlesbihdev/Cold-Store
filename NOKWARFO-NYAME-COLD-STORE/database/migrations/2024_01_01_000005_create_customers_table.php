@@ -17,8 +17,6 @@ return new class extends Migration
             $table->string('phone')->nullable();
             $table->string('email')->nullable();
             $table->text('address')->nullable();
-            $table->decimal('credit_limit', 10, 2)->default(0);
-            $table->decimal('current_balance', 10, 2)->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
@@ -31,4 +29,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('customers');
     }
-}; 
+};

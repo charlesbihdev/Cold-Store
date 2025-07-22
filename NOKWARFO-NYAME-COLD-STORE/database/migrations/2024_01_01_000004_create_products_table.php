@@ -15,10 +15,14 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->integer('lines_per_carton')->default(1);
-            $table->decimal('cost_price', 10, 2)->default(0);
-            $table->decimal('selling_price', 10, 2)->nullable();
+
+            // Only for suggestion/display, not for calculation
+            $table->decimal('default_cost_price', 10, 2)->nullable();
+            $table->decimal('default_selling_price', 10, 2)->nullable();
+
             $table->text('description')->nullable();
             $table->string('category')->nullable();
+
             $table->unsignedBigInteger('supplier_id')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
@@ -33,4 +37,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('products');
     }
-}; 
+};

@@ -61,4 +61,11 @@ class Customer extends Model
             ->get()
             ->sum('remaining_amount');
     }
-} 
+
+    public function getDebtAttribute(): float
+    {
+        return $this->sales()
+            ->where('remaining_amount', '>', 0)
+            ->sum('remaining_amount');
+    }
+}

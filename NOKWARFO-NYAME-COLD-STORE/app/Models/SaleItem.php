@@ -14,13 +14,13 @@ class SaleItem extends Model
         'product_id',
         'product_name',
         'quantity',
-        'unit_price',
+        'unit_cost',
         'total',
     ];
 
     protected $casts = [
         'quantity' => 'integer',
-        'unit_price' => 'decimal:2',
+        'unit_cost' => 'decimal:2',
         'total' => 'decimal:2',
     ];
 
@@ -33,4 +33,4 @@ class SaleItem extends Model
     {
         return $this->belongsTo(Product::class);
     }
-} 
+}

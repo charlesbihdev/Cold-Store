@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Product;
 use App\Models\Customer;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 class SalesTransactionController extends Controller
@@ -32,7 +33,7 @@ class SalesTransactionController extends Controller
                     return [
                         'product' => $item->product_name,
                         'quantity' => $item->quantity,
-                        'unit_price' => $item->unit_price,
+                        'unit_cost' => $item->unit_cost,
                         'total' => $item->total,
                     ];
                 }),
@@ -47,13 +48,15 @@ class SalesTransactionController extends Controller
 
     public function store(Request $request)
     {
+
+        // dd('Store method called with request:', $request->all());
         $validated = $request->validate([
             'customer_id' => 'nullable|exists:customers,id',
             'customer_name' => 'nullable|string|max:255',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.qty' => 'required|integer|min:1',
-            'items.*.unit_price' => 'required|numeric|min:0',
+            'items.*.unit_cost' => 'required|numeric|min:0',
             'items.*.total' => 'required|numeric|min:0',
             'amount_paid' => 'required|numeric|min:0',
             'due_date' => 'nullable|date',
@@ -99,7 +102,7 @@ class SalesTransactionController extends Controller
             'payment_type' => $payment_type,
             'status' => $status,
             'amount_paid' => $amount_paid,
-            'user_id' => auth()->id() ?? 1,
+            'user_id' => Auth::user()->id ?? 1,
         ];
         if (isset($validated['customer_name']) && empty($validated['customer_id'])) {
             $saleData['customer_name'] = $validated['customer_name'];
@@ -110,9 +113,9 @@ class SalesTransactionController extends Controller
             SaleItem::create([
                 'sale_id' => $sale->id,
                 'product_id' => $item['product_id'],
-                'product_name' => \App\Models\Product::find($item['product_id'])->name,
+                'product_name' => Product::find($item['product_id'])->name,
                 'quantity' => $item['qty'],
-                'unit_price' => $item['unit_price'],
+                'unit_cost' => $item['unit_cost'],
                 'total' => $item['total'],
             ]);
         }
@@ -122,8 +125,8 @@ class SalesTransactionController extends Controller
 
     public function destroy($transaction_id)
     {
-        $sale = \App\Models\Sale::where('transaction_id', $transaction_id)->firstOrFail();
+        $sale = Sale::where('transaction_id', $transaction_id)->firstOrFail();
         $sale->delete();
         return redirect()->route('sales-transactions.index')->with('success', 'Sales transaction deleted successfully.');
     }
-} 
+}

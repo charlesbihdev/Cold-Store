@@ -15,9 +15,11 @@ return new class extends Migration
             $table->id();
             $table->foreignId('sale_id')->constrained()->onDelete('cascade');
             $table->foreignId('product_id')->constrained()->onDelete('cascade');
+
             $table->string('product_name'); // Store name at time of sale
             $table->integer('quantity');
-            $table->decimal('unit_price', 10, 2);
+
+            $table->decimal('unit_cost', 10, 2)->nullable();
             $table->decimal('total', 10, 2);
             $table->timestamps();
         });
@@ -30,4 +32,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('sale_items');
     }
-}; 
+};

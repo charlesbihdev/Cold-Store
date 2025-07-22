@@ -13,7 +13,7 @@ class ProductController extends Controller
     {
         $products = Product::with('supplier')->orderByDesc('created_at')->get();
         $suppliers = Supplier::where('is_active', true)->get();
-        
+
         return Inertia::render('products', [
             'products' => $products,
             'suppliers' => $suppliers,
@@ -26,8 +26,8 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'category' => 'required|string|max:255',
-            'selling_price' => 'required|numeric|min:0',
-            'cost_price' => 'required|numeric|min:0',
+            'default_selling_price' => 'required|numeric|min:0',
+            'default_cost_price' => 'required|numeric|min:0',
             'supplier_id' => 'required|exists:suppliers,id',
         ]);
 
@@ -39,14 +39,15 @@ class ProductController extends Controller
         ]);
     }
 
+
     public function update(Request $request, Product $product)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'category' => 'required|string|max:255',
-            'selling_price' => 'required|numeric|min:0',
-            'cost_price' => 'required|numeric|min:0',
+            'default_selling_price' => 'required|numeric|min:0',
+            'default_cost_price' => 'required|numeric|min:0',
             'supplier_id' => 'required|exists:suppliers,id',
         ]);
 
@@ -57,6 +58,7 @@ class ProductController extends Controller
         ]);
     }
 
+
     public function destroy(Product $product)
     {
         $product->delete();
@@ -64,4 +66,4 @@ class ProductController extends Controller
             'success' => 'Product deleted successfully',
         ]);
     }
-} 
+}

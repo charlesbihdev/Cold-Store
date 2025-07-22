@@ -62,8 +62,8 @@ class DatabaseSeeder extends Seeder
             'description' => 'Fresh frozen chicken breast',
             'category' => 'Meat',
             'lines_per_carton' => 1,
-            'selling_price' => 25.00,
-            'cost_price' => 18.00,
+            'default_selling_price' => 25.00,
+            'default_cost_price' => 18.00,
             'supplier_id' => $supplier1->id,
             'is_active' => true,
         ]);
@@ -73,8 +73,8 @@ class DatabaseSeeder extends Seeder
             'description' => 'Vanilla ice cream 1L',
             'category' => 'Dairy',
             'lines_per_carton' => 1,
-            'selling_price' => 8.50,
-            'cost_price' => 5.50,
+            'default_selling_price' => 8.50,
+            'default_cost_price' => 5.50,
             'supplier_id' => $supplier2->id,
             'is_active' => true,
         ]);

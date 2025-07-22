@@ -16,17 +16,19 @@ return new class extends Migration
             $table->string('transaction_id')->unique();
             $table->foreignId('customer_id')->nullable()->constrained()->onDelete('set null');
             $table->string('customer_name')->nullable(); // For quick sales without customer record
+
             $table->decimal('subtotal', 10, 2);
             $table->decimal('tax', 10, 2)->default(0);
             $table->decimal('total', 10, 2);
+
             $table->enum('payment_type', ['cash', 'credit']);
             $table->enum('status', ['completed', 'pending', 'cancelled', 'partial', 'credit'])->default('completed');
-            
+
             // Credit-specific fields (nullable for non-credit sales)
             $table->date('due_date')->nullable();
             $table->decimal('amount_paid', 10, 2)->default(0);
             $table->date('paid_date')->nullable();
-            
+
             $table->text('notes')->nullable();
             $table->foreignId('user_id')->constrained()->onDelete('cascade'); // Cashier/User who made the sale
             $table->timestamps();
@@ -40,4 +42,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('sales');
     }
-}; 
+};

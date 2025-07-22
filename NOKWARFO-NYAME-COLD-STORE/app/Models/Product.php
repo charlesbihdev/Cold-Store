@@ -15,8 +15,8 @@ class Product extends Model
         'name',
         'description',
         'category',
-        'cost_price',
-        'selling_price',
+        "default_selling_price",
+        'default_cost_price',
         'supplier_id',
         'is_active',
     ];
@@ -46,9 +46,9 @@ class Product extends Model
     {
         return $this->stockMovements()
             ->where('type', 'received')
-            ->sum('quantity') - 
+            ->sum('quantity') -
             $this->stockMovements()
             ->where('type', 'sold')
             ->sum('quantity');
     }
-} 
+}
