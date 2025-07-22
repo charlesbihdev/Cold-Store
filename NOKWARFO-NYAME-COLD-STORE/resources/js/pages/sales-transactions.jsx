@@ -131,9 +131,17 @@ function SalesTransactions() {
     { title: 'Sales Transactions', href: '/sales-transactions' },
   ];
 
+  // Summary calculations
   const totalAmount = sales_transactions.reduce((sum, t) => sum + parseFloat(t.total), 0);
-  const cashAmount = sales_transactions.filter((t) => t.payment_type === "Cash").reduce((sum, t) => sum + parseFloat(t.total), 0);
-  const creditAmount = sales_transactions.filter((t) => t.payment_type === "Credit").reduce((sum, t) => sum + parseFloat(t.total), 0);
+  // Cash sales: sum amount_paid for cash and partial
+  const cashAmount = sales_transactions
+    .filter((t) => t.status === 'Completed' || t.status === 'Partial')
+    .reduce((sum, t) => sum + parseFloat(t.amount_paid), 0);
+  // Credit sales: sum total for credit + amount_owed for partial
+  const creditAmount = sales_transactions
+    .filter((t) => t.status === 'Credit')
+    .reduce((sum, t) => sum + parseFloat(t.total), 0)
+    + sales_transactions.filter((t) => t.status === 'Partial').reduce((sum, t) => sum + parseFloat(t.amount_owed), 0);
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
@@ -150,7 +158,7 @@ function SalesTransactions() {
               <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">GH₵{totalAmount.toFixed(2)}</div>
+              <div className="text-2xl font-bold">GH₵{(cashAmount + creditAmount).toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">All transactions</p>
             </CardContent>
           </Card>
@@ -191,6 +199,9 @@ function SalesTransactions() {
                   <TableHead>Unit Price</TableHead>
                   <TableHead>Total</TableHead>
                   <TableHead>Payment Type</TableHead>
+                  <TableHead>Amount Paid</TableHead>
+                  <TableHead>Amount Owed</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
@@ -221,8 +232,19 @@ function SalesTransactions() {
                       ))}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={transaction.payment_type === "Cash" ? "default" : "secondary"}>
-                        {transaction.payment_type}
+                      <Badge variant={transaction.status === "Partial" ? "secondary" : (transaction.payment_type === "Cash" ? "default" : "secondary")}>
+                        {transaction.status === "Partial" ? "Partial" : transaction.payment_type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>GH₵{parseFloat(transaction.amount_paid).toFixed(2)}</TableCell>
+                    <TableCell>GH₵{parseFloat(transaction.amount_owed).toFixed(2)}</TableCell>
+                    <TableCell>
+                      <Badge variant={
+                        transaction.status === "Completed" ? "default" :
+                        transaction.status === "Partial" ? "secondary" :
+                        transaction.status === "Credit" ? "outline" : "secondary"
+                      }>
+                        {transaction.status}
                       </Badge>
                     </TableCell>
                     <TableCell>

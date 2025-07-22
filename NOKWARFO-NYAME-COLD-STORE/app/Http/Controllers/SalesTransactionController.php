@@ -25,6 +25,9 @@ class SalesTransactionController extends Controller
                 'customer' => $sale->customer ? $sale->customer->name : $sale->customer_name,
                 'total' => $sale->total,
                 'payment_type' => ucfirst($sale->payment_type),
+                'status' => ucfirst($sale->status),
+                'amount_paid' => $sale->amount_paid,
+                'amount_owed' => $sale->total - $sale->amount_paid,
                 'sale_items' => $sale->saleItems->map(function ($item) {
                     return [
                         'product' => $item->product_name,
