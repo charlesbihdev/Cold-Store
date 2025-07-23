@@ -20,8 +20,6 @@ class DatabaseSeeder extends Seeder
             'phone' => '+233 20 123 4567',
             'email' => 'john@example.com',
             'address' => 'Accra, Ghana',
-            'credit_limit' => 0,
-            'current_balance' => 0,
             'is_active' => true,
         ]);
 
@@ -30,8 +28,6 @@ class DatabaseSeeder extends Seeder
             'phone' => '+233 24 987 6543',
             'email' => 'sarah@example.com',
             'address' => 'Kumasi, Ghana',
-            'credit_limit' => 200,
-            'current_balance' => 150.00,
             'is_active' => true,
         ]);
 

@@ -89,13 +89,13 @@ class SalesTransactionController extends Controller
         }
 
         $status = 'completed';
-        if ($amount_paid == 0) {
-            $status = 'credit';
-        } elseif ($amount_paid < $total) {
-            $status = 'partial';
-        }
+        // if ($amount_paid == 0) {
+        //     $status = 'credit';
+        // } elseif ($amount_paid < $total) {
+        //     $status = 'partial';
+        // }
 
-        $payment_type = $validated['payment_type'] === 'partial' ? 'cash' : $validated['payment_type'];
+        $payment_type = $validated['payment_type'];
         $saleData = [
             'transaction_id' => 'TXN' . time(),
             'customer_id' => $validated['customer_id'],

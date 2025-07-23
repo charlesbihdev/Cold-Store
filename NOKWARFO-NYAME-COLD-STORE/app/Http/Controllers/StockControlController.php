@@ -56,8 +56,15 @@ class StockControlController extends Controller
                     $q->whereDate('created_at', $date)->where('payment_type', 'credit');
                 })
                 ->sum('quantity');
+
+            $partialSales = $product->saleItems()
+                ->whereHas('sale', function ($q) use ($date) {
+                    $q->whereDate('created_at', $date)->where('payment_type', 'partial');
+                })
+                ->sum('quantity');
+
             // Total Sales
-            $totalSales = $cashSales + $creditSales;
+            $totalSales = $cashSales + $creditSales + $partialSales;
             // Remaining Stock
             $remainingStock = $totalAvailable - $totalSales;
             $stock_activity_summary[] = [
@@ -68,6 +75,7 @@ class StockControlController extends Controller
                 'stock_available' => $totalAvailable,
                 'cash_sales' => $cashSales,
                 'credit_sales' => $creditSales,
+                'partial_sales' => $partialSales,
                 'total_sales' => $totalSales,
                 'remaining_stock' => $remainingStock,
             ];
@@ -110,9 +118,9 @@ class StockControlController extends Controller
     {
         $stockMovement = StockMovement::findOrFail($id);
         $stockMovement->delete();
-    
+
         return redirect()->route('stock-control.index')
-                         ->with('success', 'Stock movement deleted successfully.');
+            ->with('success', 'Stock movement deleted successfully.');
     }
 
     public function dailyMovementReport(Request $request)
@@ -169,4 +177,4 @@ class StockControlController extends Controller
             'report' => $report,
         ]);
     }
-} 
+}

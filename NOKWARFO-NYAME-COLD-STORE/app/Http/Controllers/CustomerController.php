@@ -10,23 +10,29 @@ class CustomerController extends Controller
 {
     public function index()
     {
+
         $customers = Customer::with('sales')
             ->orderByDesc('created_at')
             ->get();
 
-        $customers->transform(function ($customer) {
+        $customers = $customers->map(function ($customer) {
             return [
                 'id' => $customer->id,
                 'name' => $customer->name,
                 'phone' => $customer->phone,
                 'address' => $customer->address,
-                'debt' => $customer->debt, // total amount owed
+                'debt' => $customer->getDebt(), // NOW this will be triggered
             ];
         });
+
+
+        // dd('Customers:', $customers);
+
         return Inertia::render('customers', [
             'customers' => $customers,
         ]);
     }
+
 
 
 

@@ -109,6 +109,7 @@ export default function StockControl() {
                                     <TableHead className="bg-blue-50">Total Available</TableHead>
                                     <TableHead>Cash Sales</TableHead>
                                     <TableHead>Credit Sales</TableHead>
+                                    <TableHead>Partial Sales</TableHead>
                                     <TableHead className="bg-green-50">Total Sales</TableHead>
                                     <TableHead className="bg-yellow-50">Remaining Stock</TableHead>
                                 </TableRow>
@@ -122,6 +123,7 @@ export default function StockControl() {
                                         <TableCell className="bg-blue-50 text-center font-semibold">{row.total_available}</TableCell>
                                         <TableCell className="text-center">{row.cash_sales}</TableCell>
                                         <TableCell className="text-center">{row.credit_sales}</TableCell>
+                                        <TableCell className="text-center">{row.partial_sales}</TableCell>
                                         <TableCell className="bg-green-50 text-center font-semibold">{row.total_sales}</TableCell>
                                         <TableCell className="bg-yellow-50 text-center font-semibold">{row.remaining_stock}</TableCell>
                                     </TableRow>

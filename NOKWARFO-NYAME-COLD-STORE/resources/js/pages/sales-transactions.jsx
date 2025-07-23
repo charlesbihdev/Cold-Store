@@ -11,8 +11,9 @@ import { router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react'; // Added for useEffect
 
 function SalesTransactions({ sales_transactions = [], products = [], customers = [] }) {
+    console.log('Sales Transactions:', sales_transactions);
     const [open, setOpen] = useState(false);
-    const [deletingId, setDeletingId] = useState(null);
+    // const [deletingId, setDeletingId] = useState(null);
     // Form handling with destructured useForm
     const { data, setData, post, processing, errors, reset, setError } = useForm({
         customer_id: '',
@@ -135,14 +136,16 @@ function SalesTransactions({ sales_transactions = [], products = [], customers =
 
     // Summary calculations
     const totalAmount = sales_transactions.reduce((sum, t) => sum + parseFloat(t.total), 0);
-    // Cash sales: sum amount_paid for cash and partial
+
+    // Cash sales: sum amount_paid for Cash and Partial
     const cashAmount = sales_transactions
-        .filter((t) => t.status === 'Completed' || t.status === 'Partial')
+        .filter((t) => t.payment_type === 'Cash' || t.payment_type === 'Partial')
         .reduce((sum, t) => sum + parseFloat(t.amount_paid), 0);
+
     // Credit sales: sum total for credit + amount_owed for partial
     const creditAmount =
-        sales_transactions.filter((t) => t.status === 'Credit').reduce((sum, t) => sum + parseFloat(t.total), 0) +
-        sales_transactions.filter((t) => t.status === 'Partial').reduce((sum, t) => sum + parseFloat(t.amount_owed), 0);
+        sales_transactions.filter((t) => t.payment_type === 'Credit').reduce((sum, t) => sum + parseFloat(t.total), 0) +
+        sales_transactions.filter((t) => t.payment_type === 'Partial').reduce((sum, t) => sum + parseFloat(t.total - t.amount_paid), 0);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

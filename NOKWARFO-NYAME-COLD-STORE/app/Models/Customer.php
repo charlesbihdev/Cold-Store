@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Customer extends Model
 {
@@ -62,10 +63,20 @@ class Customer extends Model
             ->sum('remaining_amount');
     }
 
-    public function getDebtAttribute(): float
+    public function getDebt(): float
     {
-        return $this->sales()
-            ->where('remaining_amount', '>', 0)
-            ->sum('remaining_amount');
+        // Get total for credit sales
+        $creditTotal = $this->sales()
+            ->where('status', 'completed')
+            ->where('payment_type', 'credit')
+            ->sum('total');
+
+        // Get remaining for partial payments (total - amount_paid)
+        $partialTotal = $this->sales()
+            ->where('status', 'completed')
+            ->where('payment_type', 'partial')
+            ->sum(DB::raw('total - amount_paid'));
+
+        return $creditTotal + $partialTotal;
     }
 }
