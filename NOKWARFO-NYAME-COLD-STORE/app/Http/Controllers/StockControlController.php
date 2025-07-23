@@ -19,7 +19,7 @@ class StockControlController extends Controller
         $stock_activity_summary = [];
         foreach ($products as $product) {
             // Stock Received today
-            $stockReceived = $product->stockMovements()
+            $stockReceivedToday = $product->stockMovements()
                 ->whereDate('created_at', $date)
                 ->where('type', 'received')
                 ->sum('quantity');
@@ -30,11 +30,11 @@ class StockControlController extends Controller
                 ->sum('quantity');
             // Previous Stock: all received + adjusted before today, minus all sold before today
             $receivedBefore = $product->stockMovements()
-                ->where('created_at', '<', $date . ' 00:00:00')
+                ->where('created_at', '<', $date)
                 ->where('type', 'received')
                 ->sum('quantity');
             $adjustedBefore = $product->stockMovements()
-                ->where('created_at', '<', $date . ' 00:00:00')
+                ->where('created_at', '<', $date)
                 ->where('type', 'adjusted')
                 ->sum('quantity');
             $soldBefore = $product->stockMovements()
@@ -43,7 +43,7 @@ class StockControlController extends Controller
                 ->sum('quantity');
             $previousStock = $receivedBefore + $adjustedBefore - $soldBefore;
             // Total Available
-            $totalAvailable = $previousStock + $stockReceived + $adjustedToday;
+            $totalAvailable = $previousStock + $stockReceivedToday + $adjustedToday;
             // Cash Sales today
             $cashSales = $product->saleItems()
                 ->whereHas('sale', function ($q) use ($date) {
@@ -69,7 +69,7 @@ class StockControlController extends Controller
             $remainingStock = $totalAvailable - $totalSales;
             $stock_activity_summary[] = [
                 'product' => $product->name,
-                'stock_received' => $stockReceived,
+                'stock_received_today' => $stockReceivedToday + $adjustedToday,
                 'previous_stock' => $previousStock,
                 'total_available' => $totalAvailable,
                 'stock_available' => $totalAvailable,

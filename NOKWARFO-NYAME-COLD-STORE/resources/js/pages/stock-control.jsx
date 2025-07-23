@@ -104,7 +104,7 @@ export default function StockControl() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Product</TableHead>
-                                    <TableHead>Stock Available</TableHead>
+                                    <TableHead>Stock Received today</TableHead>
                                     <TableHead>Previous Stock</TableHead>
                                     <TableHead className="bg-blue-50">Total Available</TableHead>
                                     <TableHead>Cash Sales</TableHead>
@@ -118,7 +118,7 @@ export default function StockControl() {
                                 {stock_activity_summary.map((row, idx) => (
                                     <TableRow key={row.product + idx}>
                                         <TableCell className="font-medium">{row.product}</TableCell>
-                                        <TableCell className="text-center">{row.stock_available}</TableCell>
+                                        <TableCell className="text-center">{row.stock_received_today}</TableCell>
                                         <TableCell className="text-center">{row.previous_stock}</TableCell>
                                         <TableCell className="bg-blue-50 text-center font-semibold">{row.total_available}</TableCell>
                                         <TableCell className="text-center">{row.cash_sales}</TableCell>
@@ -146,7 +146,7 @@ export default function StockControl() {
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="inline-block h-4 w-4 rounded-sm border border-green-100 bg-green-50"></span>
-                            <span>Total Sales = Cash Sales + Credit Sales</span>
+                            <span>Total Sales = Cash Sales + Credit Sales + Partial Sales</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <span className="inline-block h-4 w-4 rounded-sm border border-yellow-100 bg-yellow-50"></span>
