@@ -6,11 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { useForm, usePage } from '@inertiajs/react';
-import { Banknote, Plus } from 'lucide-react';
+import { router, useForm, usePage } from '@inertiajs/react';
+import { Banknote, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 function BankTransfers() {
+    const [deleteTransferId, setDeleteTransferId] = useState(null);
     const [tagForm, setTagForm] = useState({ name: '' });
     const { bank_transfers = [], tags = [], lastBalance = 0 } = usePage().props;
 
@@ -64,6 +65,18 @@ function BankTransfers() {
         e.preventDefault();
         post(route('bank-transfers.store'), {
             onSuccess: () => reset(),
+        });
+    }
+
+    function handleDelete() {
+        if (!deleteTransferId) return;
+
+        router.delete(route('bank-transfers.destroy', deleteTransferId), {
+            method: 'delete',
+            preserveScroll: true,
+            onSuccess: () => {
+                setDeleteTransferId(null);
+            },
         });
     }
 
@@ -224,7 +237,19 @@ function BankTransfers() {
                                             <TableCell className="text-red-600">GH₵{parseFloat(transfer.debit || 0).toFixed(2)}</TableCell>
                                             <TableCell>{transfer.tag?.name || 'No tag'}</TableCell>
                                             <TableCell className="font-medium">GH₵{parseFloat(transfer.current_balance || 0).toFixed(2)}</TableCell>
-                                            <TableCell>{transfer.notes || '-'}</TableCell>
+                                            <TableCell className="max-w-[200px]">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="truncate">{transfer.notes || '-'}</span>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => setDeleteTransferId(transfer.id)}
+                                                        className="h-8 w-8 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
                                         </TableRow>
                                     ))
                                 ) : (
@@ -238,6 +263,26 @@ function BankTransfers() {
                         </Table>
                     </CardContent>
                 </Card>
+
+                {/* Delete Confirmation Modal */}
+                <Dialog open={!!deleteTransferId} onOpenChange={(open) => !open && setDeleteTransferId(null)}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Delete Bank Transfer</DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4">
+                            <p>Are you sure you want to delete this bank transfer record? This action cannot be undone.</p>
+                        </div>
+                        <div className="flex justify-end space-x-2">
+                            <Button variant="outline" onClick={() => setDeleteTransferId(null)}>
+                                Cancel
+                            </Button>
+                            <Button className="text-white" variant="destructive" onClick={handleDelete}>
+                                Delete
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </div>
         </AppLayout>
     );
