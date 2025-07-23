@@ -9,7 +9,6 @@ class BankTransferTagController extends Controller
 {
     public function store(Request $request)
     {
-        dd($request->all());
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:bank_transfer_tags',
         ]);
