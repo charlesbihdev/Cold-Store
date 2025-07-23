@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use Inertia\Inertia;
 use App\Models\BankTransfer;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
+use App\Models\BankTransferTag;
 
 class BankTransferController extends Controller
 {
     public function index()
     {
-        $bank_transfers = BankTransfer::orderByDesc('created_at')->get();
-
-        $bank_transfers = BankTransfer::orderByDesc('created_at')
+        $bank_transfers = BankTransfer::with('tag')
+            ->orderByDesc('created_at')
             ->get()
             ->map(function ($transfer) {
                 return [
@@ -25,13 +25,15 @@ class BankTransferController extends Controller
                     'debit' => number_format($transfer->debit, 2),
                     'current_balance' => number_format($transfer->current_balance, 2),
                     'notes' => $transfer->notes,
-                    'debit_tag' => $transfer->debit_tag,
-                    'custom_tag' => $transfer->custom_tag,
+                    'tag' => $transfer->tag ? ['id' => $transfer->tag->id, 'name' => $transfer->tag->name] : null,
                 ];
             });
 
+        $tags = BankTransferTag::orderBy('name')->get();
+
         return Inertia::render('bank-transfers', [
             'bank_transfers' => $bank_transfers,
+            'tags' => $tags,
         ]);
     }
 
@@ -40,19 +42,31 @@ class BankTransferController extends Controller
         $validated = $request->validate([
             'date' => 'required|date',
             'previous_balance' => 'required|numeric|min:0',
-            'credit' => 'nullable|numeric|min:0',
-            'total_balance' => 'required|numeric|min:0',
-            'debit' => 'nullable|numeric|min:0',
-            'debit_tag' => 'nullable|string|max:255',
+            'credit' => ['nullable', 'numeric', 'min:0'],
+            'debit' => ['nullable', 'numeric', 'min:0'],
+            'total_balance' => ['required', 'numeric', 'min:1'],
+            'tag_id' => 'required|exists:bank_transfer_tags,id',
             'current_balance' => 'required|numeric|min:0',
-            'custom_tag' => 'nullable|string|max:255',
             'notes' => 'nullable|string|max:1000',
         ]);
+
+        // 🔁 Replace null with 0
+        $validated['credit'] = $validated['credit'] ?? 0;
+        $validated['debit'] = $validated['debit'] ?? 0;
+
+        // ❗Ensure at least one is greater than 0
+        if ($validated['credit'] == 0 && $validated['debit'] == 0) {
+            return back()->withErrors(['credit' => 'Either credit or debit must be greater than 0']);
+        }
+
+        // ✅ Add user_id
+        $validated['user_id'] = auth()->id() ?? 1;
 
         BankTransfer::create($validated);
 
         return redirect()->route('bank-transfers.index')->with('success', 'Bank transfer recorded successfully.');
     }
+
 
     public function destroy(BankTransfer $bankTransfer)
     {

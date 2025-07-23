@@ -12,8 +12,18 @@ import { useEffect, useState } from 'react';
 
 function BankTransfers() {
     const [deleteTransferId, setDeleteTransferId] = useState(null);
-    const [tagForm, setTagForm] = useState({ name: '' });
     const { bank_transfers = [], tags = [], lastBalance = 0 } = usePage().props;
+
+    const {
+        data: tagData,
+        setData: setTagData,
+        post: postTag,
+        processing: processingTag,
+        errors: tagErrors,
+        reset: resetTag,
+    } = useForm({
+        name: '',
+    });
 
     const { data, setData, post, processing, errors, reset } = useForm({
         date: new Date().toISOString().split('T')[0],
@@ -30,34 +40,30 @@ function BankTransfers() {
     useEffect(() => {
         const prevBalance = parseFloat(data.previous_balance) || 0;
         const credit = parseFloat(data.credit) || 0;
-        const total = prevBalance + credit;
         const debit = parseFloat(data.debit) || 0;
+
+        // Calculate total balance (previous + credit)
+        const totalBalance = prevBalance + credit;
+
+        // Calculate current balance (total - debit)
+        const currentBalance = totalBalance - debit;
 
         setData((prevData) => ({
             ...prevData,
-            total_balance: total.toString(),
-            current_balance: (total - debit).toString(),
+            total_balance: totalBalance.toFixed(2),
+            current_balance: currentBalance.toFixed(2),
         }));
     }, [data.previous_balance, data.credit, data.debit]);
 
     const breadcrumbs = [{ title: 'Bank Transfers', href: '/bank-transfers' }];
 
-    const [tagErrors, setTagErrors] = useState({});
-
     function handleTagSubmit(e) {
         if (e) e.preventDefault();
-        if (!tagForm.name.trim()) return;
+        if (!tagData.name.trim()) return;
 
-        post(route('bank-transfer-tags.store'), {
+        postTag(route('bank-transfer-tags.store'), {
             preserveScroll: true,
-            data: tagForm,
-            onSuccess: () => {
-                setTagForm({ name: '' });
-                setTagErrors({});
-            },
-            onError: (errors) => {
-                setTagErrors(errors);
-            },
+            onSuccess: () => resetTag(),
         });
     }
 
@@ -92,13 +98,13 @@ function BankTransfers() {
                                 <div className="flex-1 space-y-1">
                                     <Input
                                         placeholder="New tag name"
-                                        value={tagForm.name}
-                                        onChange={(e) => setTagForm({ name: e.target.value })}
+                                        value={tagData.name}
+                                        onChange={(e) => setTagData('name', e.target.value)}
                                         className={`w-48 ${tagErrors.name ? 'border-red-500' : ''}`}
                                     />
                                     {tagErrors.name && <div className="text-sm text-red-500">{tagErrors.name}</div>}
                                 </div>
-                                <Button onClick={handleTagSubmit} variant="outline" disabled={!tagForm.name.trim()}>
+                                <Button onClick={handleTagSubmit} variant="outline" disabled={!tagData.name.trim() || processingTag}>
                                     <Plus className="mr-2 h-4 w-4" />
                                     Add Tag
                                 </Button>
@@ -148,7 +154,14 @@ function BankTransfers() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="total_balance">Total Balance</Label>
-                                            <Input id="total_balance" type="number" step="0.01" value={data.total_balance} readOnly />
+                                            <Input
+                                                id="total_balance"
+                                                type="number"
+                                                step="0.01"
+                                                value={data.total_balance}
+                                                readOnly
+                                                className="cursor-not-allowed bg-gray-200"
+                                            />
                                             {errors.total_balance && <div className="text-sm text-red-500">{errors.total_balance}</div>}
                                         </div>
                                         <div className="space-y-2">
@@ -180,7 +193,14 @@ function BankTransfers() {
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="current_balance">Current Balance</Label>
-                                            <Input id="current_balance" type="number" step="0.01" value={data.current_balance} readOnly />
+                                            <Input
+                                                id="current_balance"
+                                                type="number"
+                                                step="0.01"
+                                                value={data.current_balance}
+                                                readOnly
+                                                className="cursor-not-allowed bg-gray-200"
+                                            />
                                             {errors.current_balance && <div className="text-sm text-red-500">{errors.current_balance}</div>}
                                         </div>
                                         <div className="col-span-2 space-y-2">
@@ -235,7 +255,7 @@ function BankTransfers() {
                                             <TableCell className="text-green-600">GH₵{parseFloat(transfer.credit || 0).toFixed(2)}</TableCell>
                                             <TableCell>GH₵{parseFloat(transfer.total_balance || 0).toFixed(2)}</TableCell>
                                             <TableCell className="text-red-600">GH₵{parseFloat(transfer.debit || 0).toFixed(2)}</TableCell>
-                                            <TableCell>{transfer.tag?.name || 'No tag'}</TableCell>
+                                            <TableCell>{transfer.tag ? transfer.tag.name : 'No tag'}</TableCell>
                                             <TableCell className="font-medium">GH₵{parseFloat(transfer.current_balance || 0).toFixed(2)}</TableCell>
                                             <TableCell className="max-w-[200px]">
                                                 <div className="flex items-center justify-between gap-2">

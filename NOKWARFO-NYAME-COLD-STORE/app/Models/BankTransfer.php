@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\BankTransferTag;
 
 class BankTransfer extends Model
 {
@@ -15,11 +16,16 @@ class BankTransfer extends Model
         'credit',
         'total_balance',
         'debit',
-        'debit_tag',
+        'tag_id',
         'current_balance',
-        'custom_tag',
         'notes',
+        'user_id',
     ];
+
+    public function tag()
+    {
+        return $this->belongsTo(BankTransferTag::class);
+    }
 
     protected $casts = [
         'date' => 'date',
