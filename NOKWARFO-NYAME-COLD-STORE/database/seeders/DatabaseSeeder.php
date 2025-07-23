@@ -91,9 +91,7 @@ class DatabaseSeeder extends Seeder
             'credit' => 500.00,
             'total_balance' => 1500.00,
             'debit' => 200.00,
-            'debit_tag' => 'Expenses',
             'current_balance' => 1300.00,
-            'custom_tag' => 'Daily',
             'notes' => 'Daily bank activity',
             'user_id' => $user->id,
         ]);

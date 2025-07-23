@@ -11,124 +11,125 @@ import { router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react'; // Added for useEffect
 
 function SalesTransactions({ sales_transactions = [], products = [], customers = [] }) {
-    console.log('Sales Transactions:', sales_transactions);
     const [open, setOpen] = useState(false);
-    // const [deletingId, setDeletingId] = useState(null);
-    // Form handling with destructured useForm
-    const { data, setData, post, processing, errors, reset, setError } = useForm({
+    const [deletingId, setDeletingId] = useState(null);
+    // Cart-style items state
+    const [items, setItems] = useState([{ product_id: '', qty: '', unit_price: '', total: '' }]);
+    // Payment state
+    const [amountPaid, setAmountPaid] = useState('');
+    const [dueDate, setDueDate] = useState('');
+    const [paymentType, setPaymentType] = useState('cash');
+    const form = useForm({
         customer_id: '',
-        items: [{ product_id: '', qty: '', unit_cost: '', total: '' }],
+        items: items,
         amount_paid: '',
         due_date: '',
         payment_type: 'cash',
     });
 
-    // console.log(errors);
-
-    // Remove unnecessary useEffects since we're using form data directly
+    // Update form items when items state changes
+    useEffect(() => {
+        form.setData('items', items);
+    }, [items]);
+    useEffect(() => {
+        form.setData('amount_paid', amountPaid);
+    }, [amountPaid]);
+    useEffect(() => {
+        form.setData('due_date', dueDate);
+    }, [dueDate]);
+    useEffect(() => {
+        form.setData('payment_type', paymentType);
+    }, [paymentType]);
 
     // Calculate running total
-    const runningTotal = data.items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
+    const runningTotal = items.reduce((sum, item) => sum + (parseFloat(item.total) || 0), 0);
 
-    // Ensure amount_paid is always runningTotal for cash
+    // Ensure amountPaid is always runningTotal for cash
     useEffect(() => {
-        if (data.payment_type === 'cash') {
-            setData('amount_paid', runningTotal.toString());
+        if (paymentType === 'cash') {
+            setAmountPaid(runningTotal.toString());
+            form.setError('amount_paid', undefined);
         }
-        if (data.payment_type === 'credit') {
-            setData('amount_paid', '0');
+        if (paymentType === 'credit') {
+            setAmountPaid('0');
+            form.setError('amount_paid', undefined);
         }
-    }, [data.payment_type, runningTotal]);
+    }, [paymentType, runningTotal]);
 
     const handleOpen = () => {
-        reset();
-        setData({
-            customer_id: '',
-            items: [{ product_id: '', qty: '', unit_cost: '', total: '' }],
-            amount_paid: '',
-            due_date: '',
-            payment_type: 'cash',
-        });
+        form.reset();
+        setItems([{ product_id: '', qty: '', unit_price: '', total: '' }]);
+        setAmountPaid('');
+        setDueDate('');
+        setPaymentType('cash');
         setOpen(true);
     };
     const handleClose = () => {
         setOpen(false);
-        reset();
-        setData({
-            customer_id: '',
-            items: [{ product_id: '', qty: '', unit_cost: '', total: '' }],
-            amount_paid: '',
-            due_date: '',
-            payment_type: 'cash',
+        form.reset();
+        setItems([{ product_id: '', qty: '', unit_price: '', total: '' }]);
+        setAmountPaid('');
+        setDueDate('');
+        setPaymentType('cash');
+    };
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        form.post('/sales-transactions', {
+            onSuccess: () => handleClose(),
         });
     };
-    // const handleSubmit = (e) => {
-    //     e.preventDefault();
-    //     post(route('sales-transactions.store'), {
-    //         onSuccess: () => {
-    //             reset();
-    //             setOpen(false);
-    //         },
-    //         preserveScroll: true,
-    //         preserveState: true,
-    //         only: ['sales_transactions', 'errors', 'flash'],
-    //     });
-    // };
     const handleDelete = (id) => {
         if (window.confirm('Are you sure you want to delete this transaction?')) {
-            router.delete(route('sales-transactions.destroy', { id }));
+            router.delete(`/sales-transactions/${id}`);
         }
     };
     // Cart logic
     const handleItemChange = (idx, field, value) => {
-        const newItems = data.items.map((item, i) =>
+        const newItems = items.map((item, i) =>
             i === idx
                 ? {
                       ...item,
                       [field]: value,
                       total:
-                          field === 'qty' || field === 'unit_cost'
+                          field === 'qty' || field === 'unit_price'
                               ? field === 'qty'
-                                  ? value * (item.unit_cost || 0)
+                                  ? value * (item.unit_price || 0)
                                   : (item.qty || 0) * value
                               : item.total,
                   }
                 : item,
         );
-        setData('items', newItems);
+        setItems(newItems);
     };
     const addItem = () => {
-        setData('items', [...data.items, { product_id: '', qty: '', unit_cost: '', total: '' }]);
+        setItems([...items, { product_id: '', qty: '', unit_price: '', total: '' }]);
     };
     const removeItem = (idx) => {
-        if (data.items.length === 1) return;
-        setData(
-            'items',
-            data.items.filter((_, i) => i !== idx),
-        );
+        if (items.length === 1) return;
+        setItems(items.filter((_, i) => i !== idx));
     };
     // Payment logic
     const handleAmountPaidChange = (v) => {
-        setData('amount_paid', v);
-        if (data.payment_type === 'partial') {
+        setAmountPaid(v);
+        if (paymentType === 'partial') {
             if (parseFloat(v) <= 0 || parseFloat(v) >= runningTotal) {
-                setError('amount_paid', 'For partial payments, the amount paid must be greater than 0 and less than the total.');
+                form.setError('amount_paid', 'For partial payments, the amount paid must be greater than 0 and less than the total.');
             } else {
-                setError('amount_paid', undefined);
+                form.setError('amount_paid', undefined);
             }
         }
     };
     const handlePaymentTypeChange = (v) => {
-        setData('payment_type', v);
+        setPaymentType(v);
         if (v === 'credit') {
-            setData('amount_paid', '0');
-            setError('amount_paid', undefined);
+            setAmountPaid('0');
+            form.setError('amount_paid', undefined);
         } else if (v === 'cash') {
-            setData('amount_paid', runningTotal.toString());
-            setError('amount_paid', undefined);
+            setAmountPaid(runningTotal.toString());
+            form.setError('amount_paid', undefined);
         } else if (v === 'partial') {
-            setData('amount_paid', '');
-            setError('amount_paid', undefined);
+            setAmountPaid('');
+            form.setError('amount_paid', undefined);
         }
     };
 
@@ -136,16 +137,14 @@ function SalesTransactions({ sales_transactions = [], products = [], customers =
 
     // Summary calculations
     const totalAmount = sales_transactions.reduce((sum, t) => sum + parseFloat(t.total), 0);
-
-    // Cash sales: sum amount_paid for Cash and Partial
+    // Cash sales: sum amount_paid for cash and partial
     const cashAmount = sales_transactions
-        .filter((t) => t.payment_type === 'Cash' || t.payment_type === 'Partial')
+        .filter((t) => t.status === 'Completed' || t.status === 'Partial')
         .reduce((sum, t) => sum + parseFloat(t.amount_paid), 0);
-
     // Credit sales: sum total for credit + amount_owed for partial
     const creditAmount =
-        sales_transactions.filter((t) => t.payment_type === 'Credit').reduce((sum, t) => sum + parseFloat(t.total), 0) +
-        sales_transactions.filter((t) => t.payment_type === 'Partial').reduce((sum, t) => sum + parseFloat(t.total - t.amount_paid), 0);
+        sales_transactions.filter((t) => t.status === 'Credit').reduce((sum, t) => sum + parseFloat(t.total), 0) +
+        sales_transactions.filter((t) => t.status === 'Partial').reduce((sum, t) => sum + parseFloat(t.amount_owed), 0);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -200,7 +199,7 @@ function SalesTransactions({ sales_transactions = [], products = [], customers =
                                     <TableHead>Customer</TableHead>
                                     <TableHead>Product</TableHead>
                                     <TableHead>Quantity</TableHead>
-                                    <TableHead>Unit Cost</TableHead>
+                                    <TableHead>Unit Price</TableHead>
                                     <TableHead>Total</TableHead>
                                     <TableHead>Payment Type</TableHead>
                                     <TableHead>Amount Paid</TableHead>
@@ -227,7 +226,7 @@ function SalesTransactions({ sales_transactions = [], products = [], customers =
                                         </TableCell>
                                         <TableCell>
                                             {transaction.sale_items.map((item, idx) => (
-                                                <div key={idx}>GH₵{parseFloat(item.unit_cost).toFixed(2)}</div>
+                                                <div key={idx}>GH₵{parseFloat(item.unit_price).toFixed(2)}</div>
                                             ))}
                                         </TableCell>
                                         <TableCell className="font-medium">
@@ -291,22 +290,22 @@ function SalesTransactions({ sales_transactions = [], products = [], customers =
                             onSubmit={(e) => {
                                 e.preventDefault();
                                 // Client-side validation before submit
-                                if (data.payment_type === 'cash' && parseFloat(data.amount_paid) !== runningTotal) {
-                                    setError('amount_paid', 'For cash payments, the amount paid must equal the total.');
+                                if (paymentType === 'cash' && parseFloat(amountPaid) !== runningTotal) {
+                                    form.setError('amount_paid', 'For cash payments, the amount paid must equal the total.');
                                     return;
                                 }
-                                if (data.payment_type === 'credit' && parseFloat(data.amount_paid) !== 0) {
-                                    setError('amount_paid', 'For credit sales, the amount paid must be 0.');
+                                if (paymentType === 'credit' && parseFloat(amountPaid) !== 0) {
+                                    form.setError('amount_paid', 'For credit sales, the amount paid must be 0.');
                                     return;
                                 }
-                                if (
-                                    data.payment_type === 'partial' &&
-                                    (parseFloat(data.amount_paid) <= 0 || parseFloat(data.amount_paid) >= runningTotal)
-                                ) {
-                                    setError('amount_paid', 'For partial payments, the amount paid must be greater than 0 and less than the total.');
+                                if (paymentType === 'partial' && (parseFloat(amountPaid) <= 0 || parseFloat(amountPaid) >= runningTotal)) {
+                                    form.setError(
+                                        'amount_paid',
+                                        'For partial payments, the amount paid must be greater than 0 and less than the total.',
+                                    );
                                     return;
                                 }
-                                post(route('sales-transactions.store'), {
+                                form.post('/sales-transactions', {
                                     onSuccess: () => handleClose(),
                                 });
                             }}
@@ -314,7 +313,7 @@ function SalesTransactions({ sales_transactions = [], products = [], customers =
                         >
                             <div>
                                 <label className="mb-1 block font-medium">Customer</label>
-                                <Select value={data.customer_id} onValueChange={(v) => setData('customer_id', v)}>
+                                <Select value={form.data.customer_id} onValueChange={(v) => form.setData('customer_id', v)}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select customer" />
                                     </SelectTrigger>
@@ -326,13 +325,13 @@ function SalesTransactions({ sales_transactions = [], products = [], customers =
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                {errors.customer_id && <InputError message={errors.customer_id} className="mt-2" />}
+                                {form.errors.customer_id && <div className="mt-1 text-xs text-red-500">{form.errors.customer_id}</div>}
                             </div>
                             {/* Cart Items */}
                             <div>
                                 <label className="mb-1 block font-medium">Items</label>
                                 <div className="max-h-64 space-y-2 overflow-y-auto">
-                                    {data.items.map((item, idx) => (
+                                    {items.map((item, idx) => (
                                         <div key={idx} className="flex w-full flex-wrap items-end gap-2">
                                             <div className="min-w-[120px] flex-1">
                                                 <Select value={item.product_id} onValueChange={(v) => handleItemChange(idx, 'product_id', v)}>
@@ -362,9 +361,9 @@ function SalesTransactions({ sales_transactions = [], products = [], customers =
                                                     type="number"
                                                     min="0"
                                                     step="0.01"
-                                                    placeholder="Unit Cost"
-                                                    value={item.unit_cost}
-                                                    onChange={(e) => handleItemChange(idx, 'unit_cost', e.target.value)}
+                                                    placeholder="Unit Price"
+                                                    value={item.unit_price}
+                                                    onChange={(e) => handleItemChange(idx, 'unit_price', e.target.value)}
                                                 />
                                             </div>
                                             <div className="w-24 min-w-[90px]">
@@ -376,7 +375,7 @@ function SalesTransactions({ sales_transactions = [], products = [], customers =
                                                 size="sm"
                                                 className="text-white"
                                                 onClick={() => removeItem(idx)}
-                                                disabled={data.items.length === 1}
+                                                disabled={items.length === 1}
                                             >
                                                 Remove
                                             </Button>
@@ -386,16 +385,7 @@ function SalesTransactions({ sales_transactions = [], products = [], customers =
                                         Add Item
                                     </Button>
                                 </div>
-                                {Object.keys(errors).map((key) => {
-                                    if (key.startsWith('items')) {
-                                        return (
-                                            <div key={key} className="mt-1 text-xs text-red-500">
-                                                {errors[key].replace(/items\.\d+\./, '')}
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                })}
+                                {form.errors['items'] && <div className="mt-1 text-xs text-red-500">{form.errors['items']}</div>}
                             </div>
                             {/* Running Total */}
                             <div className="text-lg font-bold">Total: GH₵{runningTotal.toFixed(2)}</div>
@@ -403,7 +393,7 @@ function SalesTransactions({ sales_transactions = [], products = [], customers =
                             <div className="flex gap-2">
                                 <div className="flex-1">
                                     <label className="mb-1 block font-medium">Payment Type</label>
-                                    <Select value={data.payment_type} onValueChange={handlePaymentTypeChange}>
+                                    <Select value={paymentType} onValueChange={handlePaymentTypeChange}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select payment type" />
                                         </SelectTrigger>
@@ -413,26 +403,26 @@ function SalesTransactions({ sales_transactions = [], products = [], customers =
                                             <SelectItem value="partial">Partial</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                    {errors.payment_type && <div className="mt-1 text-xs text-red-500">{errors.payment_type}</div>}
+                                    {form.errors.payment_type && <div className="mt-1 text-xs text-red-500">{form.errors.payment_type}</div>}
                                 </div>
                                 <div className="flex-1">
                                     <label className="mb-1 block font-medium">Amount Paid</label>
                                     <Input
                                         type="number"
-                                        min={data.payment_type === 'partial' ? 1 : 0}
-                                        max={data.payment_type === 'partial' ? runningTotal - 1 : runningTotal}
+                                        min={paymentType === 'partial' ? 1 : 0}
+                                        max={paymentType === 'partial' ? runningTotal - 1 : runningTotal}
                                         step="0.01"
-                                        value={data.amount_paid}
+                                        value={amountPaid}
                                         onChange={(e) => handleAmountPaidChange(e.target.value)}
-                                        disabled={data.payment_type === 'credit' || data.payment_type === 'cash'}
+                                        disabled={paymentType === 'credit' || paymentType === 'cash'}
                                     />
-                                    {errors.amount_paid && <InputError message={errors.amount_paid} className="mt-2" />}
+                                    {form.errors.amount_paid && <InputError message={form.errors.amount_paid} className="mt-2" />}
                                 </div>
-                                {data.payment_type !== 'cash' && (
+                                {paymentType !== 'cash' && (
                                     <div className="flex-1">
                                         <label className="mb-1 block font-medium">Due Date</label>
-                                        <Input type="date" value={data.due_date} onChange={(e) => setData('due_date', e.target.value)} />
-                                        {errors.due_date && <div className="mt-1 text-xs text-red-500">{errors.due_date}</div>}
+                                        <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                                        {form.errors.due_date && <div className="mt-1 text-xs text-red-500">{form.errors.due_date}</div>}
                                     </div>
                                 )}
                             </div>
@@ -440,7 +430,7 @@ function SalesTransactions({ sales_transactions = [], products = [], customers =
                                 <Button type="button" variant="secondary" onClick={handleClose}>
                                     Cancel
                                 </Button>
-                                <Button type="submit">{processing ? 'Saving..' : 'Save'}</Button>
+                                <Button type="submit">{form.processing ? 'Saving..' : 'Save'}</Button>
                             </DialogFooter>
                         </form>
                     </DialogContent>

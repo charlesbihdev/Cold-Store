@@ -11,7 +11,7 @@ class BankTransferController extends Controller
     public function index()
     {
         $bank_transfers = BankTransfer::orderByDesc('created_at')->get();
-        
+
         return Inertia::render('bank-transfers', [
             'bank_transfers' => $bank_transfers,
         ]);
@@ -41,4 +41,4 @@ class BankTransferController extends Controller
         $bankTransfer->delete();
         return redirect()->route('bank-transfers.index')->with('success', 'Bank transfer deleted successfully.');
     }
-} 
+}

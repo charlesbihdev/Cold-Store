@@ -29,4 +29,4 @@ class BankTransfer extends Model
         'debit' => 'decimal:2',
         'current_balance' => 'decimal:2',
     ];
-} 
+}
