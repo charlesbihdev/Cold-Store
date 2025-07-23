@@ -12,12 +12,12 @@ class DailySalesReportController extends Controller
     public function index()
     {
         $today = now()->format('Y-m-d');
-        
+
         // Get today's sales
         $todaySales = Sale::whereDate('created_at', $today)->with(['customer', 'saleItems.product'])->get();
-        
+
         // Separate cash and credit sales
-        $cash_sales = $todaySales->whereIn('status', ['completed', 'partial'])->map(function ($sale) {
+        $cash_sales = $todaySales->whereIn('payment_type', ['cash', 'partial'])->map(function ($sale) {
             return [
                 'time' => $sale->created_at->format('H:i A'),
                 'customer' => $sale->customer ? $sale->customer->name : $sale->customer_name,
@@ -26,7 +26,7 @@ class DailySalesReportController extends Controller
             ];
         })->values();
 
-        $credit_sales = $todaySales->where('status', 'credit')->map(function ($sale) {
+        $credit_sales = $todaySales->where('payment_type', 'credit')->map(function ($sale) {
             return [
                 'time' => $sale->created_at->format('H:i A'),
                 'customer' => $sale->customer ? $sale->customer->name : $sale->customer_name,
@@ -35,123 +35,103 @@ class DailySalesReportController extends Controller
             ];
         })->values();
         // Add amount_owed from partials to credit_sales
-        $partial_sales = $todaySales->where('status', 'partial');
+        $partial_sales = $todaySales->where('payment_type', 'partial');
         foreach ($partial_sales as $sale) {
             $credit_sales->push([
                 'time' => $sale->created_at->format('H:i A'),
                 'customer' => $sale->customer ? $sale->customer->name : $sale->customer_name,
                 'products' => $sale->saleItems->pluck('product_name')->join(', '),
                 'amount' => $sale->total - $sale->amount_paid,
+                'amount_paid' => $sale->amount_paid,
             ]);
         }
 
         // Build product summaries with sequential allocation for partial payments
+        // Initialize maps
         $cashProductMap = [];
         $creditProductMap = [];
+        $partialProductMap = [];
+
+        // Build product summaries
         foreach ($todaySales as $sale) {
             $items = $sale->saleItems;
-            if ($sale->status === 'completed' && $sale->payment_type === 'cash') {
-                // All items are cash
-                foreach ($items as $item) {
-                    $pid = $item->product_id;
+            foreach ($items as $item) {
+                $pid = $item->product_id;
+                $productName = $item->product->name;
+                $qty = $item->quantity;
+                $total = $item->total;
+                // $amountPaid = $item->amount_paid;
+                // dd($amountPaid);
+
+                if ($sale->status !== 'completed') {
+                    continue;
+                }
+
+                if ($sale->payment_type === 'cash') {
                     if (!isset($cashProductMap[$pid])) {
                         $cashProductMap[$pid] = [
-                            'product' => $item->product->name,
+                            'product' => $productName,
                             'qty' => 0,
                             'total_amount' => 0,
                         ];
                     }
-                    $cashProductMap[$pid]['qty'] += $item->quantity;
-                    $cashProductMap[$pid]['total_amount'] += $item->total;
+                    $cashProductMap[$pid]['qty'] += $qty;
+                    $cashProductMap[$pid]['total_amount'] += $total;
                 }
-            } elseif ($sale->status === 'credit' && $sale->payment_type === 'credit') {
-                // All items are credit
-                foreach ($items as $item) {
-                    $pid = $item->product_id;
+
+                if ($sale->payment_type === 'credit') {
                     if (!isset($creditProductMap[$pid])) {
                         $creditProductMap[$pid] = [
-                            'product' => $item->product->name,
+                            'product' => $productName,
                             'qty' => 0,
                             'total_amount' => 0,
                         ];
                     }
-                    $creditProductMap[$pid]['qty'] += $item->quantity;
-                    $creditProductMap[$pid]['total_amount'] += $item->total;
+                    $creditProductMap[$pid]['qty'] += $qty;
+                    $creditProductMap[$pid]['total_amount'] += $total;
                 }
-            } elseif ($sale->status === 'partial') {
-                // Sequential allocation of amount_paid to items
-                $remainingPaid = $sale->amount_paid;
-                foreach ($items as $item) {
-                    $pid = $item->product_id;
-                    $itemTotal = $item->total;
-                    $itemQty = $item->quantity;
-                    $itemUnit = $item->unit_price;
-                    // Allocate cash portion
-                    $cashForThisItem = min($remainingPaid, $itemTotal);
-                    $creditForThisItem = $itemTotal - $cashForThisItem;
-                    // Cash portion
-                    if ($cashForThisItem > 0) {
-                        if (!isset($cashProductMap[$pid])) {
-                            $cashProductMap[$pid] = [
-                                'product' => $item->product->name,
-                                'qty' => 0,
-                                'total_amount' => 0,
-                            ];
-                        }
-                        // Proportionally allocate quantity for cash
-                        $cashQty = $itemQty * ($cashForThisItem / $itemTotal);
-                        $cashProductMap[$pid]['qty'] += $cashQty;
-                        $cashProductMap[$pid]['total_amount'] += $cashForThisItem;
+
+                if ($sale->payment_type === 'partial') {
+                    if (!isset($partialProductMap[$pid])) {
+                        $partialProductMap[$pid] = [
+                            'product' => $productName,
+                            'qty' => 0,
+                            'total_amount' => 0,
+                            'amount_paid' => 0,
+                        ];
                     }
-                    // Credit portion
-                    if ($creditForThisItem > 0) {
-                        if (!isset($creditProductMap[$pid])) {
-                            $creditProductMap[$pid] = [
-                                'product' => $item->product->name,
-                                'qty' => 0,
-                                'total_amount' => 0,
-                            ];
-                        }
-                        // Proportionally allocate quantity for credit
-                        $creditQty = $itemQty * ($creditForThisItem / $itemTotal);
-                        $creditProductMap[$pid]['qty'] += $creditQty;
-                        $creditProductMap[$pid]['total_amount'] += $creditForThisItem;
-                    }
-                    $remainingPaid -= $cashForThisItem;
-                    if ($remainingPaid <= 0) {
-                        $remainingPaid = 0;
-                    }
+                    $partialProductMap[$pid]['qty'] += $qty;
+                    $partialProductMap[$pid]['total_amount'] += $total;
+                    $partialProductMap[$pid]['amount_paid'] = $sale->amount_paid;
                 }
             }
         }
-        // Convert maps to values
-        $products_bought = collect($cashProductMap)->values();
-        $credited_products = collect($creditProductMap)->values();
-        
+
         return Inertia::render('daily-sales-report', [
             'cash_sales' => $cash_sales,
             'credit_sales' => $credit_sales,
-            'products_bought' => $products_bought,
-            'credited_products' => $credited_products,
+            'products_bought' => collect($cashProductMap)->values(),
+            'credited_products' => collect($creditProductMap)->values(),
+            'partial_products' => collect($partialProductMap)->values(),
         ]);
     }
 
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'date' => 'required|date',
-            'cash_sales' => 'required|array',
-            'credit_sales' => 'required|array',
-        ]);
+    // public function store(Request $request)
+    // {
+    //     $validated = $request->validate([
+    //         'date' => 'required|date',
+    //         'cash_sales' => 'required|array',
+    //         'credit_sales' => 'required|array',
+    //     ]);
 
-        DailySalesReport::create($validated);
+    //     DailySalesReport::create($validated);
 
-        return redirect()->route('daily-sales-report.index')->with('success', 'Daily sales report created successfully.');
-    }
+    //     return redirect()->route('daily-sales-report.index')->with('success', 'Daily sales report created successfully.');
+    // }
 
-    public function destroy(DailySalesReport $dailySalesReport)
-    {
-        $dailySalesReport->delete();
-        return redirect()->route('daily-sales-report.index')->with('success', 'Daily sales report deleted successfully.');
-    }
-} 
+    // public function destroy(DailySalesReport $dailySalesReport)
+    // {
+    //     $dailySalesReport->delete();
+    //     return redirect()->route('daily-sales-report.index')->with('success', 'Daily sales report deleted successfully.');
+    // }
+}
