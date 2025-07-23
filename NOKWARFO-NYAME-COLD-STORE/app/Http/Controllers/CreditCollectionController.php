@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\CreditCollection;
 use App\Models\Customer;
+use App\Models\Expense;
 use App\Models\Sale;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -92,8 +93,18 @@ class CreditCollectionController extends Controller
             return null;
         })->filter()->values();
 
-        // For now, return empty expenses array (can be added later)
-        $expenses = [];
+        // Get today's expenses
+        $expenses = Expense::whereDate('date', today())
+            ->get()
+            ->map(function ($expense) {
+                return [
+                    'id' => $expense->id,
+                    'description' => $expense->description,
+                    'amount' => $expense->amount,
+                    'notes' => $expense->notes,
+                    'date' => $expense->date->format('Y-m-d'),
+                ];
+            });
 
         // Customers list for dropdown
         $customers = Customer::orderBy('name')->get(['id', 'name']);
@@ -136,13 +147,12 @@ class CreditCollectionController extends Controller
         }
 
         // Calculate debt left after this collection
-        $debt_left = $remaining_debt - $validated['amount_collected'];
+        // $debt_left = $remaining_debt - $validated['amount_collected'];
 
         // Create the credit collection record
-        $creditCollection = CreditCollection::create([
+        CreditCollection::create([
             'customer_id' => $validated['customer_id'],
             'amount_collected' => $validated['amount_collected'],
-            'debt_left' => $debt_left,
             'notes' => $validated['notes'],
         ]);
 

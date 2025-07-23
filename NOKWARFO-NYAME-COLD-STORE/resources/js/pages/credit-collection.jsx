@@ -14,14 +14,47 @@ import { useState } from 'react';
 
 function CreditCollection() {
     const [open, setOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [expenseOpen, setExpenseOpen] = useState(false);
     const { credit_collections = [], outstanding_debts = [], expenses = [], customers = [] } = usePage().props;
+
+    const filteredDebts = outstanding_debts.filter((debt) => debt.customer.toLowerCase().includes(searchQuery.toLowerCase()));
     const { data, setData, post, processing, errors, reset } = useForm({
         customer_id: '',
         amount_collected: '',
         notes: '',
     });
 
+    const {
+        data: expenseFormData,
+        setData: setExpenseFormData,
+        post: expensePost,
+        processing: expenseProcessing,
+        errors: expenseErrors,
+        reset: resetExpense,
+    } = useForm({
+        description: '',
+        amount: '',
+        notes: '',
+        date: new Date().toISOString().split('T')[0],
+    });
+
     const breadcrumbs = [{ title: 'Credit Collection', href: '/credit-collection' }];
+
+    function handleExpenseSubmit(e) {
+        e.preventDefault();
+        expensePost(route('expenses.store'), {
+            onSuccess: () => {
+                resetExpense();
+                setExpenseOpen(false);
+            },
+            onError: (errors) => {
+                // The errors will be automatically handled by the form
+                console.error('Failed to submit expense:', errors);
+            },
+            preserveScroll: true,
+        });
+    }
 
     function handleCollect(debt) {
         setData({
@@ -181,7 +214,7 @@ function CreditCollection() {
                                     <TableRow>
                                         <TableHead>Customer Name</TableHead>
                                         <TableHead>Amount Collected</TableHead>
-                                        <TableHead>Debt Remaining</TableHead>
+                                        {/* <TableHead>Debt Remaining</TableHead> */}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -191,9 +224,9 @@ function CreditCollection() {
                                             <TableCell className="font-medium text-green-600">
                                                 GH₵{parseFloat(collection.amount_collected).toFixed(2)}
                                             </TableCell>
-                                            <TableCell className={collection.debt_left > 0 ? 'font-medium text-orange-600' : 'text-green-600'}>
+                                            {/* <TableCell className={collection.debt_left > 0 ? 'font-medium text-orange-600' : 'text-green-600'}>
                                                 {collection.debt_left > 0 ? `GH₵${parseFloat(collection.debt_left).toFixed(2)}` : 'Cleared'}
-                                            </TableCell>
+                                            </TableCell> */}
                                         </TableRow>
                                     ))}
                                     <TableRow className="bg-green-50">
@@ -208,8 +241,68 @@ function CreditCollection() {
 
                     {/* Daily Expenses */}
                     <Card>
-                        <CardHeader>
+                        <CardHeader className="flex flex-row items-center justify-between">
                             <CardTitle>Daily Expenses</CardTitle>
+                            <Dialog open={expenseOpen} onOpenChange={setExpenseOpen}>
+                                <DialogTrigger asChild>
+                                    <Button>
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Add Expense
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[425px]">
+                                    <DialogHeader>
+                                        <DialogTitle>Add New Expense</DialogTitle>
+                                    </DialogHeader>
+                                    <form onSubmit={handleExpenseSubmit} className="grid gap-4 py-4">
+                                        <div className="grid grid-cols-4 items-center gap-4">
+                                            <Label htmlFor="description" className="text-right">
+                                                Description
+                                            </Label>
+                                            <div className="col-span-3">
+                                                <Input
+                                                    id="description"
+                                                    placeholder="Expense description"
+                                                    value={expenseFormData.description}
+                                                    onChange={(e) => setExpenseFormData('description', e.target.value)}
+                                                />
+                                                {expenseErrors.description && <InputError message={expenseErrors.description} className="mt-2" />}
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-4 items-center gap-4">
+                                            <Label htmlFor="amount" className="text-right">
+                                                Amount (GH₵)
+                                            </Label>
+                                            <div className="col-span-3">
+                                                <Input
+                                                    id="amount"
+                                                    type="number"
+                                                    placeholder="0.00"
+                                                    value={expenseFormData.amount}
+                                                    onChange={(e) => setExpenseFormData('amount', e.target.value)}
+                                                />
+                                                {expenseErrors.amount && <InputError message={expenseErrors.amount} className="mt-2" />}
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-4 items-center gap-4">
+                                            <Label htmlFor="notes" className="text-right">
+                                                Notes
+                                            </Label>
+                                            <div className="col-span-3">
+                                                <Input
+                                                    id="notes"
+                                                    placeholder="Optional notes"
+                                                    value={expenseFormData.notes}
+                                                    onChange={(e) => setExpenseFormData('notes', e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                        <Button type="submit" disabled={expenseProcessing}>
+                                            {expenseProcessing ? 'Adding...' : 'Add Expense'}
+                                        </Button>
+                                    </form>
+                                </DialogContent>
+                            </Dialog>
                         </CardHeader>
                         <CardContent>
                             <Table>
@@ -238,11 +331,19 @@ function CreditCollection() {
 
                 {/* Outstanding Debts Table */}
                 <Card>
-                    <CardHeader>
+                    <CardHeader className="flex flex-col space-y-4">
                         <CardTitle className="flex items-center gap-2">
                             <AlertTriangle className="h-5 w-5 text-orange-600" />
                             Outstanding Customer Debts
                         </CardTitle>
+                        <div className="flex items-center space-x-2">
+                            <Input
+                                placeholder="Search customers..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="max-w-sm"
+                            />
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <Table>
@@ -259,7 +360,7 @@ function CreditCollection() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {outstanding_debts.map((debt, index) => (
+                                {filteredDebts.map((debt, index) => (
                                     <TableRow key={index}>
                                         <TableCell className="font-medium">{debt.customer}</TableCell>
                                         <TableCell>GH₵{parseFloat(debt.total_debt).toFixed(2)}</TableCell>
