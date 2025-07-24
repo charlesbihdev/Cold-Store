@@ -13,9 +13,8 @@ import { useEffect, useState } from 'react'; // Added for useEffect
 function SalesTransactions() {
     const { sales_transactions = [], products = [], customers = [] } = usePage().props;
     const [open, setOpen] = useState(false);
-    const [deletingId, setDeletingId] = useState(null);
     // Cart-style items state
-    const [items, setItems] = useState([{ product_id: '', qty: '', unit_price: '', total: '' }]);
+    const [items, setItems] = useState([{ product_id: '', qty: '', unit_cost: '', total: '' }]);
     // Payment state
     const [amountPaid, setAmountPaid] = useState('');
     const [dueDate, setDueDate] = useState('');
@@ -59,7 +58,7 @@ function SalesTransactions() {
 
     const handleOpen = () => {
         form.reset();
-        setItems([{ product_id: '', qty: '', unit_price: '', total: '' }]);
+        setItems([{ product_id: '', qty: '', unit_cost: '', total: '' }]);
         setAmountPaid('');
         setDueDate('');
         setPaymentType('cash');
@@ -68,20 +67,20 @@ function SalesTransactions() {
     const handleClose = () => {
         setOpen(false);
         form.reset();
-        setItems([{ product_id: '', qty: '', unit_price: '', total: '' }]);
+        setItems([{ product_id: '', qty: '', unit_cost: '', total: '' }]);
         setAmountPaid('');
         setDueDate('');
         setPaymentType('cash');
     };
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        form.post('/sales-transactions', {
-            onSuccess: () => handleClose(),
-        });
-    };
+    // const handleSubmit = (e) => {
+    //     e.preventDefault();
+    //     form.post('/sales-transactions', {
+    //         onSuccess: () => handleClose(),
+    //     });
+    // };
     const handleDelete = (id) => {
         if (window.confirm('Are you sure you want to delete this transaction?')) {
-            router.delete(`/sales-transactions/${id}`);
+            router.delete(route('sales-transactions.destroy', id));
         }
     };
     // Cart logic
@@ -92,9 +91,9 @@ function SalesTransactions() {
                       ...item,
                       [field]: value,
                       total:
-                          field === 'qty' || field === 'unit_price'
+                          field === 'qty' || field === 'unit_cost'
                               ? field === 'qty'
-                                  ? value * (item.unit_price || 0)
+                                  ? value * (item.unit_cost || 0)
                                   : (item.qty || 0) * value
                               : item.total,
                   }
@@ -103,7 +102,7 @@ function SalesTransactions() {
         setItems(newItems);
     };
     const addItem = () => {
-        setItems([...items, { product_id: '', qty: '', unit_price: '', total: '' }]);
+        setItems([...items, { product_id: '', qty: '', unit_cost: '', total: '' }]);
     };
     const removeItem = (idx) => {
         if (items.length === 1) return;
@@ -137,15 +136,13 @@ function SalesTransactions() {
     const breadcrumbs = [{ title: 'Sales Transactions', href: '/sales-transactions' }];
 
     // Summary calculations
-    const totalAmount = sales_transactions.reduce((sum, t) => sum + parseFloat(t.total), 0);
+    // const totalAmount = sales_transactions.reduce((sum, t) => sum + parseFloat(t.total), 0);
     // Cash sales: sum amount_paid for cash and partial
-    const cashAmount = sales_transactions
-        .filter((t) => t.status === 'Completed' || t.status === 'Partial')
-        .reduce((sum, t) => sum + parseFloat(t.amount_paid), 0);
+    const cashAmount = sales_transactions.filter((t) => t.status === 'Completed').reduce((sum, t) => sum + parseFloat(t.amount_paid), 0);
     // Credit sales: sum total for credit + amount_owed for partial
     const creditAmount =
-        sales_transactions.filter((t) => t.status === 'Credit').reduce((sum, t) => sum + parseFloat(t.total), 0) +
-        sales_transactions.filter((t) => t.status === 'Partial').reduce((sum, t) => sum + parseFloat(t.amount_owed), 0);
+        sales_transactions.filter((t) => t.payment_type === 'credit').reduce((sum, t) => sum + parseFloat(t.total), 0) +
+        sales_transactions.filter((t) => t.payment_type === 'Partial').reduce((sum, t) => sum + parseFloat(t.amount_owed), 0);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -227,7 +224,7 @@ function SalesTransactions() {
                                         </TableCell>
                                         <TableCell>
                                             {transaction.sale_items.map((item, idx) => (
-                                                <div key={idx}>GH₵{parseFloat(item.unit_price).toFixed(2)}</div>
+                                                <div key={idx}>GH₵{parseFloat(item.unit_cost).toFixed(2)}</div>
                                             ))}
                                         </TableCell>
                                         <TableCell className="font-medium">
@@ -363,8 +360,8 @@ function SalesTransactions() {
                                                     min="0"
                                                     step="0.01"
                                                     placeholder="Unit Price"
-                                                    value={item.unit_price}
-                                                    onChange={(e) => handleItemChange(idx, 'unit_price', e.target.value)}
+                                                    value={item.unit_cost}
+                                                    onChange={(e) => handleItemChange(idx, 'unit_cost', e.target.value)}
                                                 />
                                             </div>
                                             <div className="w-24 min-w-[90px]">

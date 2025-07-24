@@ -6,6 +6,7 @@ use Inertia\Inertia;
 use App\Models\BankTransfer;
 use Illuminate\Http\Request;
 use App\Models\BankTransferTag;
+use Illuminate\Support\Facades\Auth;
 
 class BankTransferController extends Controller
 {
@@ -66,7 +67,7 @@ class BankTransferController extends Controller
         }
 
         // ✅ Add user_id
-        $validated['user_id'] = auth()->id() ?? 1;
+        $validated['user_id'] = Auth::user()->id ?? 1;
 
         BankTransfer::create($validated);
 
