@@ -14,7 +14,7 @@ class CreditCollectionController extends Controller
 {
     public function index()
     {
-        // Get today's credit collections with customer details
+        // Today's Credit Collections
         $credit_collections = CreditCollection::with('customer')
             ->whereDate('created_at', today())
             ->get()
@@ -26,74 +26,46 @@ class CreditCollectionController extends Controller
                 ];
             });
 
-        // Get all customers who still owe (credit or partial sales)
-        $outstanding_debts = Customer::whereHas('sales', function ($query) {
-            $query->whereIn('payment_type', ['credit', 'partial']);
-        })->get()->map(function ($customer) {
-            // Get all sales
-            $sales = $customer->sales;
+        // All customers with outstanding credit or partial sales
+        $outstanding_debts = Customer::whereHas('sales', function ($q) {
+            $q->whereIn('payment_type', ['credit', 'partial']);
+        })
+            ->with(['sales' => function ($q) {
+                $q->whereIn('payment_type', ['credit', 'partial']);
+            }, 'creditCollections'])
+            ->get()
+            ->map(function ($customer) {
+                $total_debt = $customer->sales->sum(function ($sale) {
+                    return $sale->payment_type === 'credit'
+                        ? $sale->total
+                        : $sale->total - $sale->amount_paid;
+                });
 
-            // Total debt = full credit + unpaid part of partials
-            $total_debt = $sales->sum(function ($sale) {
-                if ($sale->payment_type === 'credit') {
-                    return $sale->total;
-                } elseif ($sale->payment_type === 'partial') {
-                    return $sale->total - $sale->amount_paid;
+                $amount_paid = $customer->creditCollections->sum('amount_collected');
+                $balance = $total_debt - $amount_paid;
+
+                // Get last payment or last sale date
+                $last_payment_date = optional($customer->creditCollections->sortByDesc('created_at')->first())->created_at
+                    ?? optional($customer->sales->sortByDesc('created_at')->first())->created_at;
+
+                if ($balance > 0) {
+                    return [
+                        'customer_id' => $customer->id,
+                        'customer' => $customer->name,
+                        'total_debt' => $total_debt,
+                        'amount_paid' => $amount_paid,
+                        'balance' => $balance,
+                        'last_payment' => $last_payment_date ? $last_payment_date->format('Y-m-d') : null,
+                        'days_overdue' => $last_payment_date ? $last_payment_date->startOfDay()->diffInDays(now()->startOfDay()) : null,
+                    ];
                 }
-                return 0;
-            });
 
-            // Total paid
-            $amount_paid = CreditCollection::where('customer_id', $customer->id)
-                ->sum('amount_collected');
+                return null;
+            })
+            ->filter()
+            ->values();
 
-            $balance = $total_debt - $amount_paid;
-
-            // Get last payment date
-            $last_payment = CreditCollection::where('customer_id', $customer->id)
-                ->latest()
-                ->first();
-
-            // Fallback to last credit/partial sale if no payment
-            if ($last_payment) {
-                $last_payment_date = $last_payment->created_at;
-            } else {
-                $last_credit_sale = $customer->sales()
-                    ->whereIn('payment_type', ['credit', 'partial'])
-                    ->latest()
-                    ->first();
-
-                $last_payment_date = $last_credit_sale ? $last_credit_sale->created_at : null;
-            }
-
-            if ($balance > 0) {
-                return [
-                    'customer_id' => $customer->id,
-                    'customer' => $customer->name,
-                    'total_debt' => $total_debt,
-                    'amount_paid' => $amount_paid,
-                    'balance' => $balance,
-                    'last_payment' => $last_payment_date ? $last_payment_date->format('Y-m-d') : null,
-                    'days_overdue' => $last_payment
-                        ? $last_payment->created_at->startOfDay()->diffInDays(now()->startOfDay())
-                        : optional($customer->sales()
-                            ->where(function ($q) {
-                                $q->where('payment_type', 'credit')
-                                    ->orWhere('payment_type', 'partial');
-                            })
-                            ->latest()
-                            ->first())
-                        ?->created_at
-                        ?->startOfDay()
-                        ->diffInDays(now()->startOfDay()),
-
-                ];
-            }
-
-            return null;
-        })->filter()->values();
-
-        // Get today's expenses
+        // Today's Expenses
         $expenses = Expense::whereDate('date', today())
             ->get()
             ->map(function ($expense) {
@@ -106,7 +78,7 @@ class CreditCollectionController extends Controller
                 ];
             });
 
-        // Customers list for dropdown
+        // All customers for dropdown
         $customers = Customer::orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('credit-collection', [
@@ -116,6 +88,7 @@ class CreditCollectionController extends Controller
             'customers' => $customers,
         ]);
     }
+
 
 
     public function store(Request $request)
@@ -147,12 +120,13 @@ class CreditCollectionController extends Controller
         }
 
         // Calculate debt left after this collection
-        // $debt_left = $remaining_debt - $validated['amount_collected'];
+        $debt_left = $remaining_debt - $validated['amount_collected'];
 
         // Create the credit collection record
-        CreditCollection::create([
+        $creditCollection = CreditCollection::create([
             'customer_id' => $validated['customer_id'],
             'amount_collected' => $validated['amount_collected'],
+            'debt_left' => $debt_left,
             'notes' => $validated['notes'],
         ]);
 
