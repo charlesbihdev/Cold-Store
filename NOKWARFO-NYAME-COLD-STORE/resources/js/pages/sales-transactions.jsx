@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { router, useForm } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react'; // Added for useEffect
 
-function SalesTransactions({ sales_transactions = [], products = [], customers = [] }) {
+function SalesTransactions() {
+    const { sales_transactions = [], products = [], customers = [] } = usePage().props;
     const [open, setOpen] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
     // Cart-style items state
@@ -319,7 +320,7 @@ function SalesTransactions({ sales_transactions = [], products = [], customers =
                                     </SelectTrigger>
                                     <SelectContent>
                                         {customers.map((c) => (
-                                            <SelectItem key={c.id} value={String(c.id)} required>
+                                            <SelectItem key={c.id} value={String(c.id)}>
                                                 {c.name}
                                             </SelectItem>
                                         ))}

@@ -12,7 +12,8 @@ import { useEffect, useState } from 'react';
 
 function BankTransfers() {
     const [deleteTransferId, setDeleteTransferId] = useState(null);
-    const { bank_transfers = [], tags = [], lastBalance = 0 } = usePage().props;
+    const { bank_transfers = [], tags = [], last_balance = 0 } = usePage().props;
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
     const {
         data: tagData,
@@ -27,12 +28,12 @@ function BankTransfers() {
 
     const { data, setData, post, processing, errors, reset } = useForm({
         date: new Date().toISOString().split('T')[0],
-        previous_balance: lastBalance.toString(),
+        previous_balance: last_balance.toString(),
         credit: '0',
-        total_balance: lastBalance.toString(),
+        total_balance: last_balance.toString(),
         debit: '0',
         tag_id: '',
-        current_balance: lastBalance.toString(),
+        current_balance: last_balance.toString(),
         notes: '',
     });
 
@@ -63,14 +64,22 @@ function BankTransfers() {
 
         postTag(route('bank-transfer-tags.store'), {
             preserveScroll: true,
-            onSuccess: () => resetTag(),
+            onSuccess: () => {
+                reset();
+                setIsAddModalOpen(false);
+            },
         });
     }
 
     function handleSubmit(e) {
         e.preventDefault();
         post(route('bank-transfers.store'), {
-            onSuccess: () => reset(),
+            preserveScroll: true,
+            preserveState: false,
+            onSuccess: () => {
+                reset();
+                setIsAddModalOpen(false);
+            },
         });
     }
 
@@ -80,6 +89,7 @@ function BankTransfers() {
         router.delete(route('bank-transfers.destroy', deleteTransferId), {
             method: 'delete',
             preserveScroll: true,
+            preserveState: false,
             onSuccess: () => {
                 setDeleteTransferId(null);
             },
@@ -112,7 +122,7 @@ function BankTransfers() {
                         </div>
 
                         {/* Transfer Dialog */}
-                        <Dialog>
+                        <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
                             <DialogTrigger asChild>
                                 <Button>
                                     <Plus className="mr-2 h-4 w-4" />

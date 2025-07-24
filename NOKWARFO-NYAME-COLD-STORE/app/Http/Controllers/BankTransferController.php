@@ -29,16 +29,22 @@ class BankTransferController extends Controller
                 ];
             });
 
+
         $tags = BankTransferTag::orderBy('name')->get();
+
+        $lastBalance = BankTransfer::latest()->value('current_balance') ?? 0;
 
         return Inertia::render('bank-transfers', [
             'bank_transfers' => $bank_transfers,
             'tags' => $tags,
+            'last_balance' => $lastBalance
         ]);
     }
 
     public function store(Request $request)
     {
+
+        // dd('Store method called with request:', $request->all());
         $validated = $request->validate([
             'date' => 'required|date',
             'previous_balance' => 'required|numeric|min:0',
