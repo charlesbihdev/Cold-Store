@@ -141,7 +141,7 @@ function SalesTransactions() {
     const cashAmount = sales_transactions.filter((t) => t.status === 'Completed').reduce((sum, t) => sum + parseFloat(t.amount_paid), 0);
     // Credit sales: sum total for credit + amount_owed for partial
     const creditAmount =
-        sales_transactions.filter((t) => t.payment_type === 'credit').reduce((sum, t) => sum + parseFloat(t.total), 0) +
+        sales_transactions.filter((t) => t.payment_type === 'Credit').reduce((sum, t) => sum + parseFloat(t.total), 0) +
         sales_transactions.filter((t) => t.payment_type === 'Partial').reduce((sum, t) => sum + parseFloat(t.amount_owed), 0);
 
     return (
