@@ -147,12 +147,13 @@ class CreditCollectionController extends Controller
         }
 
         // Calculate debt left after this collection
-        // $debt_left = $remaining_debt - $validated['amount_collected'];
+        $debt_left = $remaining_debt - $validated['amount_collected'];
 
         // Create the credit collection record
-        CreditCollection::create([
+        $creditCollection = CreditCollection::create([
             'customer_id' => $validated['customer_id'],
             'amount_collected' => $validated['amount_collected'],
+            'debt_left' => $debt_left,
             'notes' => $validated['notes'],
         ]);
 

@@ -79,4 +79,9 @@ class Customer extends Model
 
         return $creditTotal + $partialTotal;
     }
+
+    public function creditCollections()
+    {
+        return $this->hasMany(CreditCollection::class);
+    }
 }
