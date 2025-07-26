@@ -9,30 +9,57 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { router, useForm } from '@inertiajs/react';
+import { format, parseISO } from 'date-fns';
 import { Edit, Package, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 function Products({ products = [], suppliers = [], errors = {} }) {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [editingPrice, setEditingPrice] = useState(null);
 
-    const { data, setData, post, put, processing, reset } = useForm({
+    // Form for product data
+    const {
+        data: productData,
+        setData: setProductData,
+        post: postProduct,
+        put: putProduct,
+        processing: productProcessing,
+        reset: resetProduct,
+        errors: productErrors,
+    } = useForm({
         name: '',
         description: '',
         category: '',
-        default_selling_price: '',
-        default_cost_price: '',
         supplier_id: '',
+    });
+
+    // Form for product price data
+    const {
+        data: productPriceData,
+        setData: setProductPriceData,
+        post: postPrice,
+        put: putPrice,
+        processing: priceProcessing,
+        reset: resetPrice,
+        errors: priceErrors,
+    } = useForm({
+        product_id: '',
+        selling_price: '',
+        valid_from: '',
     });
 
     const breadcrumbs = [{ title: 'Products', href: '/products' }];
 
-    function handleSubmit(e) {
+    // Handle product form submission
+    function handleProductSubmit(e) {
         e.preventDefault();
-        post(route('products.store'), {
+        postProduct(route('products.store'), {
             onSuccess: () => {
-                reset();
+                resetProduct();
                 setIsAddModalOpen(false);
             },
             preserveScroll: true,
@@ -41,24 +68,24 @@ function Products({ products = [], suppliers = [], errors = {} }) {
         });
     }
 
-    function handleEdit(product) {
+    // Handle product edit
+    function handleEditProduct(product) {
         setEditingProduct(product);
-        setData({
+        setProductData({
             name: product.name,
             description: product.description || '',
             category: product.category,
-            default_selling_price: product.default_selling_price,
-            default_cost_price: product.default_cost_price,
             supplier_id: product.supplier_id ? product.supplier_id.toString() : '',
         });
         setIsEditModalOpen(true);
     }
 
-    function handleUpdate(e) {
+    // Handle product update
+    function handleUpdateProduct(e) {
         e.preventDefault();
-        put(route('products.update', editingProduct.id), {
+        putProduct(route('products.update', editingProduct.id), {
             onSuccess: () => {
-                reset();
+                resetProduct();
                 setIsEditModalOpen(false);
                 setEditingProduct(null);
             },
@@ -68,13 +95,77 @@ function Products({ products = [], suppliers = [], errors = {} }) {
         });
     }
 
-    function handleDelete(productId) {
+    // Handle product deletion
+    function handleDeleteProduct(productId) {
         if (confirm('Are you sure you want to delete this product?')) {
             router.delete(route('products.destroy', productId), {
                 preserveScroll: true,
                 preserveState: true,
                 only: ['products', 'flash'],
             });
+        }
+    }
+
+    // Handle price form submission
+    function handlePriceSubmit(e) {
+        e.preventDefault();
+        const routeName = editingPrice ? 'product-prices.update' : 'product-prices.store';
+        const method = editingPrice ? putPrice : postPrice;
+        method(route(routeName, editingPrice ? editingPrice.id : null), {
+            onSuccess: () => {
+                resetPrice();
+                setIsPriceModalOpen(false);
+                setSelectedProduct(null);
+                setEditingPrice(null);
+            },
+            preserveScroll: true,
+            preserveState: true,
+            only: ['products', 'errors', 'flash'],
+        });
+    }
+
+    // Handle price edit
+    function handleEditPrice(price, product) {
+        setSelectedProduct(product);
+        setEditingPrice(price);
+        setProductPriceData({
+            product_id: product.id.toString(),
+            selling_price: price.selling_price.toString(),
+            valid_from: price.valid_from.split('T')[0], // Convert to YYYY-MM-DD
+            valid_to: price.valid_to ? price.valid_to.split('T')[0] : '',
+        });
+        setIsPriceModalOpen(true);
+    }
+
+    // Handle opening add price modal
+    function handleAddPrice(product) {
+        setSelectedProduct(product);
+        setProductPriceData({
+            product_id: product.id.toString(),
+            selling_price: '',
+            valid_from: '',
+        });
+        setIsPriceModalOpen(true);
+    }
+
+    // Handle price deletion
+    function handleDeletePrice(priceId) {
+        if (confirm('Are you sure you want to delete this price?')) {
+            router.delete(route('product-prices.destroy', priceId), {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['products', 'flash'],
+            });
+        }
+    }
+
+    // Format date to human-readable (e.g., 26 July 2025)
+    function formatDate(isoDate) {
+        if (!isoDate) return 'Ongoing';
+        try {
+            return format(parseISO(isoDate), 'dd MMMM yyyy');
+        } catch (error) {
+            return isoDate; // Fallback to raw date if parsing fails
         }
     }
 
@@ -111,7 +202,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                 <DialogTitle>Add New Product</DialogTitle>
                                 <DialogDescription>Enter the product details. All fields marked with * are required.</DialogDescription>
                             </DialogHeader>
-                            <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                            <form onSubmit={handleProductSubmit} className="grid gap-4 py-4">
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="name" className="text-right">
                                         Product Name *
@@ -120,11 +211,11 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                         <Input
                                             id="name"
                                             placeholder="Enter product name"
-                                            value={data.name}
-                                            onChange={(e) => setData('name', e.target.value)}
+                                            value={productData.name}
+                                            onChange={(e) => setProductData('name', e.target.value)}
                                             required
                                         />
-                                        {errors.name && <InputError message={errors.name} className="mt-2" />}
+                                        {productErrors.name && <InputError message={productErrors.name} className="mt-2" />}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
@@ -135,10 +226,10 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                         <Input
                                             id="description"
                                             placeholder="Product description"
-                                            value={data.description}
-                                            onChange={(e) => setData('description', e.target.value)}
+                                            value={productData.description}
+                                            onChange={(e) => setProductData('description', e.target.value)}
                                         />
-                                        {errors.description && <InputError message={errors.description} className="mt-2" />}
+                                        {productErrors.description && <InputError message={productErrors.description} className="mt-2" />}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
@@ -149,45 +240,11 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                         <Input
                                             id="category"
                                             placeholder="e.g., Frozen, Chilled, Beverages"
-                                            value={data.category}
-                                            onChange={(e) => setData('category', e.target.value)}
+                                            value={productData.category}
+                                            onChange={(e) => setProductData('category', e.target.value)}
                                             required
                                         />
-                                        {errors.category && <InputError message={errors.category} className="mt-2" />}
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="default_selling_price" className="text-right">
-                                        Default Selling Price (GH₵) *
-                                    </Label>
-                                    <div className="col-span-3">
-                                        <Input
-                                            id="default_selling_price"
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="0.00"
-                                            value={data.default_selling_price}
-                                            onChange={(e) => setData('default_selling_price', e.target.value)}
-                                            required
-                                        />
-                                        {errors.default_selling_price && <InputError message={errors.default_selling_price} className="mt-2" />}
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="default_cost_price" className="text-right">
-                                        Default Cost Price (GH₵) *
-                                    </Label>
-                                    <div className="col-span-3">
-                                        <Input
-                                            id="default_cost_price"
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="0.00"
-                                            value={data.default_cost_price}
-                                            onChange={(e) => setData('default_cost_price', e.target.value)}
-                                            required
-                                        />
-                                        {errors.default_cost_price && <InputError message={errors.default_cost_price} className="mt-2" />}
+                                        {productErrors.category && <InputError message={productErrors.category} className="mt-2" />}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
@@ -195,7 +252,11 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                         Supplier *
                                     </Label>
                                     <div className="col-span-3">
-                                        <Select value={data.supplier_id} onValueChange={(value) => setData('supplier_id', value)} required>
+                                        <Select
+                                            value={productData.supplier_id}
+                                            onValueChange={(value) => setProductData('supplier_id', value)}
+                                            required
+                                        >
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select supplier" />
                                             </SelectTrigger>
@@ -207,10 +268,10 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        {errors.supplier_id && <InputError message={errors.supplier_id} className="mt-2" />}
+                                        {productErrors.supplier_id && <InputError message={productErrors.supplier_id} className="mt-2" />}
                                     </div>
                                 </div>
-                                <Button type="submit" disabled={processing}>
+                                <Button type="submit" disabled={productProcessing}>
                                     Add Product
                                 </Button>
                             </form>
@@ -225,7 +286,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                             <DialogTitle>Edit Product</DialogTitle>
                             <DialogDescription>Update the product information. All fields marked with * are required.</DialogDescription>
                         </DialogHeader>
-                        <form onSubmit={handleUpdate} className="grid gap-4 py-4">
+                        <form onSubmit={handleUpdateProduct} className="grid gap-4 py-4">
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="edit-name" className="text-right">
                                     Product Name *
@@ -234,11 +295,11 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                     <Input
                                         id="edit-name"
                                         placeholder="Enter product name"
-                                        value={data.name}
-                                        onChange={(e) => setData('name', e.target.value)}
+                                        value={productData.name}
+                                        onChange={(e) => setProductData('name', e.target.value)}
                                         required
                                     />
-                                    {errors.name && <InputError message={errors.name} className="mt-2" />}
+                                    {productErrors.name && <InputError message={productErrors.name} className="mt-2" />}
                                 </div>
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
@@ -249,10 +310,10 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                     <Input
                                         id="edit-description"
                                         placeholder="Product description"
-                                        value={data.description}
-                                        onChange={(e) => setData('description', e.target.value)}
+                                        value={productData.description}
+                                        onChange={(e) => setProductData('description', e.target.value)}
                                     />
-                                    {errors.description && <InputError message={errors.description} className="mt-2" />}
+                                    {productErrors.description && <InputError message={productErrors.description} className="mt-2" />}
                                 </div>
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
@@ -263,55 +324,19 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                     <Input
                                         id="edit-category"
                                         placeholder="e.g., Frozen, Chilled, Beverages"
-                                        value={data.category}
-                                        onChange={(e) => setData('category', e.target.value)}
+                                        value={productData.category}
+                                        onChange={(e) => setProductData('category', e.target.value)}
                                         required
                                     />
-                                    {errors.category && <InputError message={errors.category} className="mt-2" />}
+                                    {productErrors.category && <InputError message={productErrors.category} className="mt-2" />}
                                 </div>
                             </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="edit-default_selling_price" className="text-right">
-                                    Default Selling Price (GH₵) *
-                                </Label>
-                                <div className="col-span-3">
-                                    <Input
-                                        id="edit-default_selling_price"
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="0.00"
-                                        value={data.default_selling_price}
-                                        onChange={(e) => setData('default_selling_price', e.target.value)}
-                                        required
-                                    />
-                                    {errors.default_selling_price && <InputError message={errors.default_selling_price} className="mt-2" />}
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="edit-default_cost_price" className="text-right">
-                                    Default Cost Price (GH₵) *
-                                </Label>
-                                <div className="col-span-3">
-                                    <Input
-                                        id="edit-default_cost_price"
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="0.00"
-                                        value={data.default_cost_price}
-                                        onChange={(e) => setData('default_cost_price', e.target.value)}
-                                        required
-                                    />
-                                    {errors.default_cost_price && <InputError message={errors.default_cost_price} className="mt-2" />}
-                                </div>
-                            </div>
-
                             <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="edit-supplier" className="text-right">
                                     Supplier *
                                 </Label>
                                 <div className="col-span-3">
-                                    <Select value={data.supplier_id} onValueChange={(value) => setData('supplier_id', value)} required>
+                                    <Select value={productData.supplier_id} onValueChange={(value) => setProductData('supplier_id', value)} required>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select supplier" />
                                         </SelectTrigger>
@@ -323,11 +348,75 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                    {errors.supplier_id && <InputError message={errors.supplier_id} className="mt-2" />}
+                                    {productErrors.supplier_id && <InputError message={productErrors.supplier_id} className="mt-2" />}
                                 </div>
                             </div>
-                            <Button type="submit" disabled={processing}>
+                            <Button type="submit" disabled={productProcessing}>
                                 Update Product
+                            </Button>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Add/Edit Product Price Modal */}
+                <Dialog open={isPriceModalOpen} onOpenChange={setIsPriceModalOpen}>
+                    <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                            <DialogTitle>{editingPrice ? 'Edit Product Price' : 'Add Product Price'}</DialogTitle>
+                            <DialogDescription>
+                                {editingPrice ? 'Update the price details for this product.' : 'Enter the price details for this product.'} All fields
+                                marked with * are required.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handlePriceSubmit} className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="selling_price" className="text-right">
+                                    Selling Price (₵) *
+                                </Label>
+                                <div className="col-span-3">
+                                    <Input
+                                        id="selling_price"
+                                        type="number"
+                                        step="0.01"
+                                        placeholder="Enter selling price in Cedis"
+                                        value={productPriceData.selling_price}
+                                        onChange={(e) => setProductPriceData('selling_price', e.target.value)}
+                                        required
+                                    />
+                                    {priceErrors.selling_price && <InputError message={priceErrors.selling_price} className="mt-2" />}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="valid_from" className="text-right">
+                                    Valid From *
+                                </Label>
+                                <div className="col-span-3">
+                                    <Input
+                                        id="valid_from"
+                                        type="date"
+                                        value={productPriceData.valid_from}
+                                        onChange={(e) => setProductPriceData('valid_from', e.target.value)}
+                                        required
+                                    />
+                                    {priceErrors.valid_from && <InputError message={priceErrors.valid_from} className="mt-2" />}
+                                </div>
+                            </div>
+                            {/* <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="valid_to" className="text-right">
+                                    Valid To
+                                </Label>
+                                <div className="col-span-3">
+                                    <Input
+                                        id="valid_to"
+                                        type="date"
+                                        value={productPriceData.valid_to}
+                                        onChange={(e) => setProductPriceData('valid_to', e.target.value)}
+                                    />
+                                    {priceErrors.valid_to && <InputError message={priceErrors.valid_to} className="mt-2" />}
+                                </div>
+                            </div> */}
+                            <Button type="submit" disabled={priceProcessing}>
+                                {editingPrice ? 'Update Price' : 'Add Price'}
                             </Button>
                         </form>
                     </DialogContent>
@@ -347,21 +436,16 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                 <TableRow>
                                     <TableHead>Product Name</TableHead>
                                     <TableHead>Category</TableHead>
-                                    <TableHead>Selling Price</TableHead>
-                                    <TableHead>Default Cost Price</TableHead>
                                     <TableHead>Supplier</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead>Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
-
                             <TableBody>
                                 {products.map((product) => (
                                     <TableRow key={product.id}>
                                         <TableCell className="font-medium">{product.name}</TableCell>
                                         <TableCell>{product.category}</TableCell>
-                                        <TableCell>GH₵{parseFloat(product.default_selling_price).toFixed(2)}</TableCell>
-                                        <TableCell>GH₵{parseFloat(product.default_cost_price).toFixed(2)}</TableCell>
                                         <TableCell>{product.supplier?.name || 'N/A'}</TableCell>
                                         <TableCell>
                                             <Badge variant={product.is_active ? 'default' : 'secondary'}>
@@ -370,11 +454,14 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex space-x-2">
-                                                <Button variant="outline" size="sm" onClick={() => handleEdit(product)}>
+                                                <Button variant="outline" size="sm" onClick={() => handleEditProduct(product)}>
                                                     <Edit className="h-4 w-4" />
                                                 </Button>
-                                                <Button variant="outline" size="sm" onClick={() => handleDelete(product.id)}>
+                                                <Button variant="outline" size="sm" onClick={() => handleDeleteProduct(product.id)}>
                                                     <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="outline" size="sm" onClick={() => handleAddPrice(product)}>
+                                                    <Plus className="h-4 w-4" />
                                                 </Button>
                                             </div>
                                         </TableCell>
@@ -382,8 +469,60 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                 ))}
                                 {products.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-muted-foreground py-8 text-center">
+                                        <TableCell colSpan={5} className="text-muted-foreground py-8 text-center">
                                             No products found. Add your first product to get started.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+
+                {/* Product Prices List */}
+                <Card className="mt-6">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Package className="h-5 w-5" />
+                            Product Prices
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Product Name</TableHead>
+                                    <TableHead>Selling Price (₵)</TableHead>
+                                    <TableHead>Valid From</TableHead>
+                                    {/* <TableHead>Valid To</TableHead> */}
+                                    <TableHead>Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {products.flatMap((product) =>
+                                    (product.prices || []).map((price) => (
+                                        <TableRow key={price.id}>
+                                            <TableCell>{product.name}</TableCell>
+                                            <TableCell>₵{price.selling_price}</TableCell>
+                                            <TableCell>{formatDate(price.valid_from)}</TableCell>
+                                            {/* <TableCell>{formatDate(price.valid_to)}</TableCell> */}
+                                            <TableCell>
+                                                <div className="flex space-x-2">
+                                                    <Button variant="outline" size="sm" onClick={() => handleEditPrice(price, product)}>
+                                                        <Edit className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="outline" size="sm" onClick={() => handleDeletePrice(price.id)}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    )),
+                                )}
+                                {products.every((product) => (product.prices || []).length === 0) && (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-muted-foreground py-8 text-center">
+                                            No prices found. Add prices to products to get started.
                                         </TableCell>
                                     </TableRow>
                                 )}

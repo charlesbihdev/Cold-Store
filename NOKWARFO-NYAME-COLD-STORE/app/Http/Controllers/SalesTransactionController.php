@@ -33,7 +33,7 @@ class SalesTransactionController extends Controller
                     return [
                         'product' => $item->product_name,
                         'quantity' => $item->quantity,
-                        'unit_cost' => $item->unit_cost,
+                        'unit_selling_price' => $item->unit_selling_price,
                         'total' => $item->total,
                     ];
                 }),
@@ -56,7 +56,7 @@ class SalesTransactionController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.qty' => 'required|integer|min:1',
-            'items.*.unit_cost' => 'required|numeric|min:0',
+            'items.*.unit_selling_price' => 'required|numeric|min:0',
             'items.*.total' => 'required|numeric|min:0',
             'amount_paid' => 'required|numeric|min:0',
             'due_date' => 'nullable|date',
@@ -118,7 +118,7 @@ class SalesTransactionController extends Controller
                 'product_id' => $item['product_id'],
                 'product_name' => Product::find($item['product_id'])->name,
                 'quantity' => $item['qty'],
-                'unit_cost' => $item['unit_cost'],
+                'unit_selling_price' => $item['unit_selling_price'],
                 'total' => $item['total'],
             ]);
         }

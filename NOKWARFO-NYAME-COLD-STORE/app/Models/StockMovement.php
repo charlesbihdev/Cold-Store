@@ -14,14 +14,14 @@ class StockMovement extends Model
         'supplier_id',
         'type',
         'quantity',
-        'unit_cost',
+        'unit_selling_price',
         'total_cost',
         'notes',
     ];
 
     protected $casts = [
         'quantity' => 'integer',
-        'unit_cost' => 'decimal:2',
+        'unit_selling_price' => 'decimal:2',
         'total_cost' => 'decimal:2',
     ];
 
@@ -34,4 +34,4 @@ class StockMovement extends Model
     {
         return $this->belongsTo(Supplier::class);
     }
-} 
+}

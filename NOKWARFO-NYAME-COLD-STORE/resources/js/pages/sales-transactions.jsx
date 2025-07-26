@@ -14,7 +14,7 @@ function SalesTransactions() {
     const { sales_transactions = [], products = [], customers = [] } = usePage().props;
     const [open, setOpen] = useState(false);
     // Cart-style items state
-    const [items, setItems] = useState([{ product_id: '', qty: '', unit_cost: '', total: '' }]);
+    const [items, setItems] = useState([{ product_id: '', qty: '', unit_selling_price: '', total: '' }]);
     // Payment state
     const [amountPaid, setAmountPaid] = useState('');
     const [dueDate, setDueDate] = useState('');
@@ -58,7 +58,7 @@ function SalesTransactions() {
 
     const handleOpen = () => {
         form.reset();
-        setItems([{ product_id: '', qty: '', unit_cost: '', total: '' }]);
+        setItems([{ product_id: '', qty: '', unit_selling_price: '', total: '' }]);
         setAmountPaid('');
         setDueDate('');
         setPaymentType('cash');
@@ -67,7 +67,7 @@ function SalesTransactions() {
     const handleClose = () => {
         setOpen(false);
         form.reset();
-        setItems([{ product_id: '', qty: '', unit_cost: '', total: '' }]);
+        setItems([{ product_id: '', qty: '', unit_selling_price: '', total: '' }]);
         setAmountPaid('');
         setDueDate('');
         setPaymentType('cash');
@@ -91,9 +91,9 @@ function SalesTransactions() {
                       ...item,
                       [field]: value,
                       total:
-                          field === 'qty' || field === 'unit_cost'
+                          field === 'qty' || field === 'unit_selling_price'
                               ? field === 'qty'
-                                  ? value * (item.unit_cost || 0)
+                                  ? value * (item.unit_selling_price || 0)
                                   : (item.qty || 0) * value
                               : item.total,
                   }
@@ -102,7 +102,7 @@ function SalesTransactions() {
         setItems(newItems);
     };
     const addItem = () => {
-        setItems([...items, { product_id: '', qty: '', unit_cost: '', total: '' }]);
+        setItems([...items, { product_id: '', qty: '', unit_selling_price: '', total: '' }]);
     };
     const removeItem = (idx) => {
         if (items.length === 1) return;
@@ -224,7 +224,7 @@ function SalesTransactions() {
                                         </TableCell>
                                         <TableCell>
                                             {transaction.sale_items.map((item, idx) => (
-                                                <div key={idx}>GH₵{parseFloat(item.unit_cost).toFixed(2)}</div>
+                                                <div key={idx}>GH₵{parseFloat(item.unit_selling_price).toFixed(2)}</div>
                                             ))}
                                         </TableCell>
                                         <TableCell className="font-medium">
@@ -360,8 +360,8 @@ function SalesTransactions() {
                                                     min="0"
                                                     step="0.01"
                                                     placeholder="Unit Price"
-                                                    value={item.unit_cost}
-                                                    onChange={(e) => handleItemChange(idx, 'unit_cost', e.target.value)}
+                                                    value={item.unit_selling_price}
+                                                    onChange={(e) => handleItemChange(idx, 'unit_selling_price', e.target.value)}
                                                 />
                                             </div>
                                             <div className="w-24 min-w-[90px]">

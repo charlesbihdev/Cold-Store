@@ -16,10 +16,6 @@ return new class extends Migration
             $table->string('name');
             $table->integer('lines_per_carton')->default(1);
 
-            // Only for suggestion/display, not for calculation
-            $table->decimal('default_cost_price', 10, 2)->nullable();
-            $table->decimal('default_selling_price', 10, 2)->nullable();
-
             $table->text('description')->nullable();
             $table->string('category')->nullable();
 

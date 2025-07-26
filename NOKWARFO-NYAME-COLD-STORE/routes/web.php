@@ -7,6 +7,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\BankTransferController;
+use App\Http\Controllers\ProductPriceController;
 use App\Http\Controllers\StockControlController;
 use App\Http\Controllers\ProfitAnalysisController;
 use App\Http\Controllers\BankTransferTagController;
@@ -22,6 +23,8 @@ Route::get('/', function () {
 
 Route::resource('dashboard', DashboardController::class);
 Route::resource('products', ProductController::class);
+Route::resource('products', ProductController::class);
+Route::resource('product-prices', ProductPriceController::class);
 Route::resource('stock-control', StockControlController::class);
 Route::resource('daily-sales-report', DailySalesReportController::class);
 Route::resource('credit-collection', CreditCollectionController::class);
