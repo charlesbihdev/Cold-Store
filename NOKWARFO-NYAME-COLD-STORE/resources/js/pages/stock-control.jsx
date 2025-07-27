@@ -18,7 +18,7 @@ export default function StockControl() {
         supplier_id: '',
         type: 'in',
         quantity: '',
-        unit_selling_price: '',
+        unit_cost: '',
         total_cost: '',
         notes: '',
     });
@@ -32,7 +32,7 @@ export default function StockControl() {
             supplier_id: product.supplier_id ? product.supplier_id.toString() : '',
             type: 'received',
             quantity: '',
-            unit_selling_price: product.cost_price || '',
+            unit_cost: product.cost_price || '',
             total_cost: '',
             notes: '',
         });
@@ -236,20 +236,20 @@ export default function StockControl() {
                                 </div>
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="unit_selling_price" className="text-right">
+                                <Label htmlFor="unit_cost" className="text-right">
                                     Unit Cost (GH₵) *
                                 </Label>
                                 <div className="col-span-3">
                                     <Input
-                                        id="unit_selling_price"
+                                        id="unit_cost"
                                         type="number"
                                         step="0.01"
                                         placeholder="0.00"
-                                        value={data.unit_selling_price}
-                                        onChange={(e) => setData('unit_selling_price', e.target.value)}
+                                        value={data.unit_cost}
+                                        onChange={(e) => setData('unit_cost', e.target.value)}
                                         required
                                     />
-                                    {errors.unit_selling_price && <div className="mt-1 text-xs text-red-500">{errors.unit_selling_price}</div>}
+                                    {errors.unit_cost && <div className="mt-1 text-xs text-red-500">{errors.unit_cost}</div>}
                                 </div>
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
@@ -323,7 +323,7 @@ export default function StockControl() {
                                         <TableCell>{movement.supplier && movement.supplier.name}</TableCell>
                                         <TableCell>{movement.type}</TableCell>
                                         <TableCell>{movement.quantity}</TableCell>
-                                        <TableCell>GH₵{parseFloat(movement.unit_selling_price).toFixed(2)}</TableCell>
+                                        <TableCell>GH₵{parseFloat(movement.unit_cost).toFixed(2)}</TableCell>
                                         <TableCell>GH₵{parseFloat(movement.total_cost).toFixed(2)}</TableCell>
                                         <TableCell>{movement.notes}</TableCell>
                                         <TableCell>

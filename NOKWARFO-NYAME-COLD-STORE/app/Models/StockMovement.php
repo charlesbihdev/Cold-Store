@@ -14,14 +14,14 @@ class StockMovement extends Model
         'supplier_id',
         'type',
         'quantity',
-        'unit_selling_price',
+        'unit_cost',
         'total_cost',
         'notes',
     ];
 
     protected $casts = [
         'quantity' => 'integer',
-        'unit_selling_price' => 'decimal:2',
+        'unit_cost' => 'decimal:2',
         'total_cost' => 'decimal:2',
     ];
 

@@ -96,7 +96,7 @@ class StockControlController extends Controller
             'product_id' => 'required|exists:products,id',
             'supplier_id' => 'nullable|exists:suppliers,id',
             'type' => 'required|in:received,sold,adjusted',
-            'unit_selling_price' => 'nullable|numeric|min:0',
+            'unit_cost' => 'nullable|numeric|min:0',
             'total_cost' => 'nullable|numeric|min:0',
             'notes' => 'nullable|string|max:1000',
         ];
@@ -107,7 +107,7 @@ class StockControlController extends Controller
         }
         $validated = $request->validate($rules);
         if (!isset($validated['total_cost']) || $validated['total_cost'] === null) {
-            $validated['total_cost'] = ($validated['unit_selling_price'] ?? 0) * abs($validated['quantity']);
+            $validated['total_cost'] = ($validated['unit_cost'] ?? 0) * abs($validated['quantity']);
         }
         StockMovement::create($validated);
         // Do not use preserveState or preserveScroll for stock_activity_summary, so the frontend gets fresh data
