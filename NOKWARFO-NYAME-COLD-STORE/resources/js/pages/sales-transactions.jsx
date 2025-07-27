@@ -21,11 +21,14 @@ function SalesTransactions() {
     const [paymentType, setPaymentType] = useState('cash');
     const form = useForm({
         customer_id: '',
+        customer_name: '',
         items: items,
         amount_paid: '',
         due_date: '',
         payment_type: 'cash',
     });
+
+    console.log(form.errors);
 
     // Update form items when items state changes
     useEffect(() => {
@@ -310,21 +313,47 @@ function SalesTransactions() {
                             className="space-y-4"
                         >
                             <div>
-                                <label className="mb-1 block font-medium">Customer</label>
-                                <Select value={form.data.customer_id} onValueChange={(v) => form.setData('customer_id', v)}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select customer" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {customers.map((c) => (
-                                            <SelectItem key={c.id} value={String(c.id)}>
-                                                {c.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <label className="mb-1 block font-medium">
+                                    Customer
+                                    <div className="flex gap-2">
+                                        <Select
+                                            value={form.data.customer_id ? String(form.data.customer_id) : 'none'}
+                                            onValueChange={(v) => {
+                                                if (v === 'none') {
+                                                    form.setData('customer_id', null);
+                                                } else {
+                                                    form.setData('customer_id', v);
+                                                    form.setData('customer_name', '');
+                                                }
+                                            }}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select customer" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none">-- No customer selected --</SelectItem>
+                                                {customers.map((c) => (
+                                                    <SelectItem key={c.id} value={String(c.id)}>
+                                                        {c.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+
+                                        {!form.data.customer_id && (
+                                            <Input
+                                                type="text"
+                                                placeholder="Customer name"
+                                                value={form.data.customer_name}
+                                                onChange={(e) => form.setData('customer_name', e.target.value)}
+                                            />
+                                        )}
+                                    </div>
+                                </label>
+
                                 {form.errors.customer_id && <div className="mt-1 text-xs text-red-500">{form.errors.customer_id}</div>}
                             </div>
+
                             {/* Cart Items */}
                             <div>
                                 <label className="mb-1 block font-medium">Items</label>

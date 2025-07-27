@@ -69,10 +69,23 @@ class SalesTransactionController extends Controller
             'payment_type' => 'required|in:cash,credit,partial',
         ]);
 
+        if (!isset($validated['customer_id']) && empty($validated['customer_name'])) {
+            return redirect()->back()->withErrors(['customer_id' => 'Either customer ID or customer name must be provided.'])->withInput();
+        }
+
         // Validate stock availability
         foreach ($validated['items'] as $item) {
-            $availableStock = StockMovement::where('product_id', $item['product_id'])
+            $product = Product::find($item['product_id']);
+
+            $incoming = $product->stockMovements()
+                ->whereIn('type', ['received', 'adjusted'])
                 ->sum('quantity');
+
+            $sold = $product->stockMovements()
+                ->where('type', 'sold')
+                ->sum('quantity');
+
+            $availableStock = $incoming - $sold;
 
             if ($availableStock < $item['qty']) {
                 return redirect()->back()->withErrors([
@@ -168,14 +181,14 @@ class SalesTransactionController extends Controller
             ]);
 
             // Create stock movement for sold items
-            StockMovement::create([
-                'product_id' => $item['product_id'],
-                'type' => 'sold',
-                'quantity' => -$item['qty'],
-                'unit_cost' => $item['unit_cost_price'],
-                'total_cost' => -$item['qty'] * $item['unit_cost_price'],
-                'sale_id' => $sale->id,
-            ]);
+            // StockMovement::create([
+            //     'product_id' => $item['product_id'],
+            //     'type' => 'sold',
+            //     'quantity' => -$item['qty'],
+            //     'unit_cost' => $item['unit_cost_price'],
+            //     'total_cost' => -$item['qty'] * $item['unit_cost_price'],
+            //     'sale_id' => $sale->id,
+            // ]);
         }
 
         return redirect()->route('sales-transactions.index')->with('success', 'Sales transaction created successfully.');
