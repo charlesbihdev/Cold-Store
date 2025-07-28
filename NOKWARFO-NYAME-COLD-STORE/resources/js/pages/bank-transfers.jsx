@@ -75,7 +75,7 @@ function BankTransfers() {
         e.preventDefault();
         post(route('bank-transfers.store'), {
             preserveScroll: true,
-            preserveState: false,
+            preserveState: true,
             onSuccess: () => {
                 reset();
                 setIsAddModalOpen(false);
@@ -261,12 +261,12 @@ function BankTransfers() {
                                     bank_transfers.map((transfer) => (
                                         <TableRow key={transfer.id}>
                                             <TableCell>{transfer.date}</TableCell>
-                                            <TableCell>GH₵{parseFloat(transfer.previous_balance || 0).toFixed(2)}</TableCell>
-                                            <TableCell className="text-green-600">GH₵{parseFloat(transfer.credit || 0).toFixed(2)}</TableCell>
-                                            <TableCell>GH₵{parseFloat(transfer.total_balance || 0).toFixed(2)}</TableCell>
-                                            <TableCell className="text-red-600">GH₵{parseFloat(transfer.debit || 0).toFixed(2)}</TableCell>
+                                            <TableCell>GH₵{transfer.previous_balance || 0}</TableCell>
+                                            <TableCell className="text-green-600">GH₵{transfer.credit || 0}</TableCell>
+                                            <TableCell>GH₵{transfer.total_balance || 0}</TableCell>
+                                            <TableCell className="text-red-600">GH₵{transfer.debit || 0}</TableCell>
                                             <TableCell>{transfer.tag ? transfer.tag.name : 'No tag'}</TableCell>
-                                            <TableCell className="font-medium">GH₵{parseFloat(transfer.current_balance || 0).toFixed(2)}</TableCell>
+                                            <TableCell className="font-medium">GH₵{transfer.current_balance || 0}</TableCell>
                                             <TableCell className="max-w-[200px]">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <span className="truncate">{transfer.notes || '-'}</span>

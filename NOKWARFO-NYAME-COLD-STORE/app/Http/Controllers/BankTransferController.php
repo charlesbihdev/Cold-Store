@@ -30,6 +30,8 @@ class BankTransferController extends Controller
                 ];
             });
 
+        // dd($bank_transfers);
+
 
         $tags = BankTransferTag::orderBy('name')->get();
 
