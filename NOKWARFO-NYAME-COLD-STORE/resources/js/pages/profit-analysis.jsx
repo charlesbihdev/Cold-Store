@@ -89,7 +89,7 @@ function ProfitAnalysis() {
                                         <TableRow key={index}>
                                             <TableCell className="font-medium">{item.product}</TableCell>
                                             <TableCell>{item.total_product_sold}</TableCell>
-                                            <TableCell>GH₵{parseFloat(item.unit_selling_price_price).toFixed(2)}</TableCell>
+                                            <TableCell>GH₵{parseFloat(item.unit_cost_price).toFixed(2)}</TableCell>
                                             <TableCell>GH₵{parseFloat(item.total_cost_amount).toFixed(2)}</TableCell>
                                             <TableCell>GH₵{parseFloat(item.selling_price).toFixed(2)}</TableCell>
                                             <TableCell>GH₵{parseFloat(item.total_amount).toFixed(2)}</TableCell>
@@ -130,7 +130,7 @@ function ProfitAnalysis() {
                                         <TableRow key={index}>
                                             <TableCell className="font-medium">{item.product}</TableCell>
                                             <TableCell>{item.total_product_sold}</TableCell>
-                                            <TableCell>GH₵{parseFloat(item.unit_selling_price_price).toFixed(2)}</TableCell>
+                                            <TableCell>GH₵{parseFloat(item.unit_cost_price).toFixed(2)}</TableCell>
                                             <TableCell>GH₵{parseFloat(item.total_cost_amount).toFixed(2)}</TableCell>
                                             <TableCell>GH₵{parseFloat(item.selling_price).toFixed(2)}</TableCell>
                                             <TableCell>GH₵{parseFloat(item.total_amount).toFixed(2)}</TableCell>
