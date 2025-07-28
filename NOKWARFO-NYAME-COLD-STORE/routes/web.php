@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SaleController;
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\SupplierController;
@@ -36,6 +37,8 @@ Route::resource('daily-collections', DailyCollectionsController::class);
 Route::resource('sales-transactions', SalesTransactionController::class);
 Route::post('/bank-transfer-tags', [BankTransferTagController::class, 'store'])->name('bank-transfer-tags.store');
 Route::delete('/bank-transfer-tags/{tag}', [BankTransferTagController::class, 'destroy'])->name('bank-transfer-tags.destroy');
+Route::resource('expenses', ExpenseController::class);
+
 
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
