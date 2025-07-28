@@ -85,7 +85,28 @@ class SalesTransactionController extends Controller
                 ->where('type', 'sold')
                 ->sum('quantity');
 
-            $availableStock = $incoming - $sold;
+            $cashSales = $product->saleItems()
+                ->whereHas('sale', function ($q) {
+                    $q->where('payment_type', 'cash');
+                })
+                ->sum('quantity');
+
+            $creditSales = $product->saleItems()
+                ->whereHas('sale', function ($q) {
+                    $q->where('payment_type', 'credit');
+                })
+                ->sum('quantity');
+
+            $partialSales = $product->saleItems()
+                ->whereHas('sale', function ($q) {
+                    $q->where('payment_type', 'partial');
+                })
+                ->sum('quantity');
+
+            // Total Sales
+            $totalSales = $cashSales + $creditSales + $partialSales;
+
+            $availableStock = $incoming - ($sold + $totalSales);
 
             if ($availableStock < $item['qty']) {
                 return redirect()->back()->withErrors([
@@ -104,8 +125,6 @@ class SalesTransactionController extends Controller
                 ->get();
 
             $totalCost = 0;
-            $allocatedQty = 0;
-
             foreach ($stockMovements as $movement) {
                 if ($qtyNeeded <= 0) break;
 
@@ -114,8 +133,8 @@ class SalesTransactionController extends Controller
                 $qtyNeeded -= $qtyToUse;
 
                 // Update stock movement quantity
-                $movement->quantity -= $qtyToUse;
-                $movement->save();
+                // $movement->quantity -= $qtyToUse;
+                // $movement->save();
             }
 
             if ($qtyNeeded > 0) {
@@ -184,9 +203,9 @@ class SalesTransactionController extends Controller
             // StockMovement::create([
             //     'product_id' => $item['product_id'],
             //     'type' => 'sold',
-            //     'quantity' => -$item['qty'],
+            //     'quantity' => $item['qty'], // Positive quantity, as 'sold' implies reduction
             //     'unit_cost' => $item['unit_cost_price'],
-            //     'total_cost' => -$item['qty'] * $item['unit_cost_price'],
+            //     'total_cost' => $item['qty'] * $item['unit_cost_price'],
             //     'sale_id' => $sale->id,
             // ]);
         }
@@ -198,17 +217,17 @@ class SalesTransactionController extends Controller
     {
         $sale = Sale::where('transaction_id', $transaction_id)->firstOrFail();
 
-        foreach ($sale->saleItems as $item) {
-            // Restore stock by creating a received movement
-            StockMovement::create([
-                'product_id' => $item->product_id,
-                'type' => 'received',
-                'quantity' => $item->quantity,
-                'unit_cost' => $item->unit_cost_price,
-                'total_cost' => $item->quantity * $item->unit_cost_price,
-                'sale_id' => $sale->id,
-            ]);
-        }
+        // foreach ($sale->saleItems as $item) {
+        //     // Restore stock by creating a received movement
+        //     StockMovement::create([
+        //         'product_id' => $item->product_id,
+        //         'type' => 'received',
+        //         'quantity' => $item->quantity,
+        //         'unit_cost' => $item->unit_cost_price,
+        //         'total_cost' => $item->quantity * $item->unit_cost_price,
+        //         'sale_id' => $sale->id,
+        //     ]);
+        // }
 
         $sale->delete();
         return redirect()->route('sales-transactions.index')->with('success', 'Sales transaction deleted successfully.');

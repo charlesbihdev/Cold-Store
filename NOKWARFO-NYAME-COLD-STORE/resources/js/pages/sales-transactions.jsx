@@ -28,7 +28,7 @@ function SalesTransactions() {
         payment_type: 'cash',
     });
 
-    console.log(form.errors);
+    // console.log(form.errors);
 
     // Update form items when items state changes
     useEffect(() => {
