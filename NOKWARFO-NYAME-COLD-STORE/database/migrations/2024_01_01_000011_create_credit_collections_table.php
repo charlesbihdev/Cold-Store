@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('credit_collections', function (Blueprint $table) {
             $table->id();
-            $table->string('customer_id');
+            $table->foreignId('customer_id')->constrained()->onDelete('cascade');
             $table->decimal('amount_collected', 10, 2);
             $table->text('notes')->nullable();
             $table->timestamps();
@@ -21,4 +21,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('credit_collections');
     }
-}; 
+};

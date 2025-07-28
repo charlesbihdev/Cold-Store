@@ -38,7 +38,7 @@ class StockControlController extends Controller
                 ->where('type', 'adjusted')
                 ->sum('quantity');
             $soldBefore = $product->stockMovements()
-                ->where('created_at', '<', $date . ' 00:00:00')
+                ->where('created_at', '<', $date)
                 ->where('type', 'sold')
                 ->sum('quantity');
             $previousStock = $receivedBefore + $adjustedBefore - $soldBefore;
@@ -67,6 +67,7 @@ class StockControlController extends Controller
             $totalSales = $cashSales + $creditSales + $partialSales;
             // Remaining Stock
             $remainingStock = $totalAvailable - $totalSales;
+            // $remainingStock = $totalAvailable;
             $stock_activity_summary[] = [
                 'product' => $product->name,
                 'stock_received_today' => $stockReceivedToday + $adjustedToday,

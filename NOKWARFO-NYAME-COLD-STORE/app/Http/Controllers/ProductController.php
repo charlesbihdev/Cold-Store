@@ -11,7 +11,7 @@ class ProductController extends Controller
 {
     public function index()
     {
-        $products = Product::with('supplier')->orderByDesc('created_at')->get();
+        $products = Product::with(['supplier', 'prices'])->get();
         $suppliers = Supplier::where('is_active', true)->get();
 
         return Inertia::render('products', [
@@ -26,8 +26,6 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'category' => 'required|string|max:255',
-            'default_selling_price' => 'required|numeric|min:0',
-            'default_cost_price' => 'required|numeric|min:0',
             'supplier_id' => 'required|exists:suppliers,id',
         ]);
 
@@ -46,8 +44,6 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
             'category' => 'required|string|max:255',
-            'default_selling_price' => 'required|numeric|min:0',
-            'default_cost_price' => 'required|numeric|min:0',
             'supplier_id' => 'required|exists:suppliers,id',
         ]);
 

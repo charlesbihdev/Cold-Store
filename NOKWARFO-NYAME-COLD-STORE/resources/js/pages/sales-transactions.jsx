@@ -14,18 +14,21 @@ function SalesTransactions() {
     const { sales_transactions = [], products = [], customers = [] } = usePage().props;
     const [open, setOpen] = useState(false);
     // Cart-style items state
-    const [items, setItems] = useState([{ product_id: '', qty: '', unit_cost: '', total: '' }]);
+    const [items, setItems] = useState([{ product_id: '', qty: '', unit_selling_price: '', total: '' }]);
     // Payment state
     const [amountPaid, setAmountPaid] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [paymentType, setPaymentType] = useState('cash');
     const form = useForm({
         customer_id: '',
+        customer_name: '',
         items: items,
         amount_paid: '',
         due_date: '',
         payment_type: 'cash',
     });
+
+    // console.log(form.errors);
 
     // Update form items when items state changes
     useEffect(() => {
@@ -58,7 +61,7 @@ function SalesTransactions() {
 
     const handleOpen = () => {
         form.reset();
-        setItems([{ product_id: '', qty: '', unit_cost: '', total: '' }]);
+        setItems([{ product_id: '', qty: '', unit_selling_price: '', total: '' }]);
         setAmountPaid('');
         setDueDate('');
         setPaymentType('cash');
@@ -67,7 +70,7 @@ function SalesTransactions() {
     const handleClose = () => {
         setOpen(false);
         form.reset();
-        setItems([{ product_id: '', qty: '', unit_cost: '', total: '' }]);
+        setItems([{ product_id: '', qty: '', unit_selling_price: '', total: '' }]);
         setAmountPaid('');
         setDueDate('');
         setPaymentType('cash');
@@ -91,9 +94,9 @@ function SalesTransactions() {
                       ...item,
                       [field]: value,
                       total:
-                          field === 'qty' || field === 'unit_cost'
+                          field === 'qty' || field === 'unit_selling_price'
                               ? field === 'qty'
-                                  ? value * (item.unit_cost || 0)
+                                  ? value * (item.unit_selling_price || 0)
                                   : (item.qty || 0) * value
                               : item.total,
                   }
@@ -102,7 +105,7 @@ function SalesTransactions() {
         setItems(newItems);
     };
     const addItem = () => {
-        setItems([...items, { product_id: '', qty: '', unit_cost: '', total: '' }]);
+        setItems([...items, { product_id: '', qty: '', unit_selling_price: '', total: '' }]);
     };
     const removeItem = (idx) => {
         if (items.length === 1) return;
@@ -224,7 +227,7 @@ function SalesTransactions() {
                                         </TableCell>
                                         <TableCell>
                                             {transaction.sale_items.map((item, idx) => (
-                                                <div key={idx}>GH₵{parseFloat(item.unit_cost).toFixed(2)}</div>
+                                                <div key={idx}>GH₵{parseFloat(item.unit_selling_price).toFixed(2)}</div>
                                             ))}
                                         </TableCell>
                                         <TableCell className="font-medium">
@@ -310,21 +313,47 @@ function SalesTransactions() {
                             className="space-y-4"
                         >
                             <div>
-                                <label className="mb-1 block font-medium">Customer</label>
-                                <Select value={form.data.customer_id} onValueChange={(v) => form.setData('customer_id', v)}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select customer" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {customers.map((c) => (
-                                            <SelectItem key={c.id} value={String(c.id)}>
-                                                {c.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <label className="mb-1 block font-medium">
+                                    Customer
+                                    <div className="flex gap-2">
+                                        <Select
+                                            value={form.data.customer_id ? String(form.data.customer_id) : 'none'}
+                                            onValueChange={(v) => {
+                                                if (v === 'none') {
+                                                    form.setData('customer_id', null);
+                                                } else {
+                                                    form.setData('customer_id', v);
+                                                    form.setData('customer_name', '');
+                                                }
+                                            }}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select customer" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none">-- No customer selected --</SelectItem>
+                                                {customers.map((c) => (
+                                                    <SelectItem key={c.id} value={String(c.id)}>
+                                                        {c.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+
+                                        {!form.data.customer_id && (
+                                            <Input
+                                                type="text"
+                                                placeholder="Customer name"
+                                                value={form.data.customer_name}
+                                                onChange={(e) => form.setData('customer_name', e.target.value)}
+                                            />
+                                        )}
+                                    </div>
+                                </label>
+
                                 {form.errors.customer_id && <div className="mt-1 text-xs text-red-500">{form.errors.customer_id}</div>}
                             </div>
+
                             {/* Cart Items */}
                             <div>
                                 <label className="mb-1 block font-medium">Items</label>
@@ -360,8 +389,8 @@ function SalesTransactions() {
                                                     min="0"
                                                     step="0.01"
                                                     placeholder="Unit Price"
-                                                    value={item.unit_cost}
-                                                    onChange={(e) => handleItemChange(idx, 'unit_cost', e.target.value)}
+                                                    value={item.unit_selling_price}
+                                                    onChange={(e) => handleItemChange(idx, 'unit_selling_price', e.target.value)}
                                                 />
                                             </div>
                                             <div className="w-24 min-w-[90px]">
