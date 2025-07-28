@@ -1,14 +1,13 @@
 import InputError from '@/components/InputError';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react'; // Added for useEffect
+import SalesTable from '../components/sales/salesTable';
 
 function SalesTransactions() {
     const { sales_transactions = [], products = [], customers = [] } = usePage().props;
@@ -186,101 +185,7 @@ function SalesTransactions() {
                     </Card>
                 </div>
 
-                {/* Sales Transactions Table */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Sales Transactions</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Transaction ID</TableHead>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Customer</TableHead>
-                                    <TableHead>Product</TableHead>
-                                    <TableHead>Quantity</TableHead>
-                                    <TableHead>Unit Price</TableHead>
-                                    <TableHead>Total</TableHead>
-                                    <TableHead>Payment Type</TableHead>
-                                    <TableHead>Amount Paid</TableHead>
-                                    <TableHead>Amount Owed</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {sales_transactions.map((transaction) => (
-                                    <TableRow key={transaction.id}>
-                                        <TableCell className="font-medium">{transaction.id}</TableCell>
-                                        <TableCell>{transaction.date}</TableCell>
-                                        <TableCell>{transaction.customer}</TableCell>
-                                        <TableCell>
-                                            {transaction.sale_items.map((item, idx) => (
-                                                <div key={idx}>{item.product}</div>
-                                            ))}
-                                        </TableCell>
-                                        <TableCell>
-                                            {transaction.sale_items.map((item, idx) => (
-                                                <div key={idx}>{item.quantity}</div>
-                                            ))}
-                                        </TableCell>
-                                        <TableCell>
-                                            {transaction.sale_items.map((item, idx) => (
-                                                <div key={idx}>GH₵{parseFloat(item.unit_selling_price).toFixed(2)}</div>
-                                            ))}
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {transaction.sale_items.map((item, idx) => (
-                                                <div key={idx}>GH₵{parseFloat(item.total).toFixed(2)}</div>
-                                            ))}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge
-                                                variant={
-                                                    transaction.status === 'Partial'
-                                                        ? 'secondary'
-                                                        : transaction.payment_type === 'Cash'
-                                                          ? 'default'
-                                                          : 'secondary'
-                                                }
-                                            >
-                                                {transaction.status === 'Partial' ? 'Partial' : transaction.payment_type}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>GH₵{parseFloat(transaction.amount_paid).toFixed(2)}</TableCell>
-                                        <TableCell>GH₵{parseFloat(transaction.amount_owed).toFixed(2)}</TableCell>
-                                        <TableCell>
-                                            <Badge
-                                                variant={
-                                                    transaction.status === 'Completed'
-                                                        ? 'default'
-                                                        : transaction.status === 'Partial'
-                                                          ? 'secondary'
-                                                          : transaction.status === 'Credit'
-                                                            ? 'outline'
-                                                            : 'secondary'
-                                                }
-                                            >
-                                                {transaction.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button
-                                                variant="destructive"
-                                                size="sm"
-                                                onClick={() => handleDelete(transaction.id)}
-                                                className="text-white"
-                                            >
-                                                Delete
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+                <SalesTable sales_transactions={sales_transactions} />
                 {/* Add Transaction Modal */}
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogContent>
