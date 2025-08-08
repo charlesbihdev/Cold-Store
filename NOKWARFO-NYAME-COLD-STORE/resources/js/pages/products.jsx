@@ -460,9 +460,6 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                                 <Button variant="outline" size="sm" onClick={() => handleDeleteProduct(product.id)}>
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
-                                                <Button variant="outline" size="sm" onClick={() => handleAddPrice(product)}>
-                                                    <Plus className="h-4 w-4" />
-                                                </Button>
                                             </div>
                                         </TableCell>
                                     </TableRow>
@@ -471,58 +468,6 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                     <TableRow>
                                         <TableCell colSpan={5} className="text-muted-foreground py-8 text-center">
                                             No products found. Add your first product to get started.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-
-                {/* Product Prices List */}
-                <Card className="mt-6">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Package className="h-5 w-5" />
-                            Product Prices
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Product Name</TableHead>
-                                    <TableHead>Selling Price (₵)</TableHead>
-                                    <TableHead>Valid From</TableHead>
-                                    {/* <TableHead>Valid To</TableHead> */}
-                                    <TableHead>Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {products.flatMap((product) =>
-                                    (product.prices || []).map((price) => (
-                                        <TableRow key={price.id}>
-                                            <TableCell>{product.name}</TableCell>
-                                            <TableCell>₵{price.selling_price}</TableCell>
-                                            <TableCell>{formatDate(price.valid_from)}</TableCell>
-                                            {/* <TableCell>{formatDate(price.valid_to)}</TableCell> */}
-                                            <TableCell>
-                                                <div className="flex space-x-2">
-                                                    <Button variant="outline" size="sm" onClick={() => handleEditPrice(price, product)}>
-                                                        <Edit className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button variant="outline" size="sm" onClick={() => handleDeletePrice(price.id)}>
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    )),
-                                )}
-                                {products.every((product) => (product.prices || []).length === 0) && (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="text-muted-foreground py-8 text-center">
-                                            No prices found. Add prices to products to get started.
                                         </TableCell>
                                     </TableRow>
                                 )}

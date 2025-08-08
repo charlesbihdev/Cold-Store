@@ -2,6 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { router } from '@inertiajs/react';
 import { Receipt } from 'lucide-react';
 import { useState } from 'react';
 import CreditReceipt from './CreditReceipt';
@@ -14,10 +15,10 @@ const SalesTable = ({ sales_transactions }) => {
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [receiptType, setReceiptType] = useState(null);
 
-    // Handle delete function (placeholder)
-    const handleDelete = (transactionId) => {
-        console.log('Delete transaction:', transactionId);
-        // Implement delete logic here
+    const handleDelete = (id) => {
+        if (window.confirm('Are you sure you want to delete this transaction?')) {
+            router.delete(route('sales-transactions.destroy', id));
+        }
     };
 
     // Handle receipt generation

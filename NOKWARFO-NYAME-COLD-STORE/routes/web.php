@@ -40,5 +40,13 @@ Route::delete('/bank-transfer-tags/{tag}', [BankTransferTagController::class, 'd
 Route::resource('expenses', ExpenseController::class);
 
 
+// New debt management routes
+Route::get('/suppliers/{supplier}/transactions', [SupplierController::class, 'transactions'])->name('suppliers.transactions');
+Route::post('/suppliers/{supplier}/transactions', [SupplierController::class, 'storeTransaction'])->name('suppliers.transactions.store');
+Route::post('/suppliers/{supplier}/payments', [SupplierController::class, 'makePayment'])->name('suppliers.payments.store');
+Route::get('/suppliers/{supplier}/summary', [SupplierController::class, 'getTransactionSummary'])->name('suppliers.summary');
+Route::patch('/suppliers/{supplier}/toggle-status', [SupplierController::class, 'toggleStatus'])->name('suppliers.toggle-status');
+
+
 require __DIR__ . '/settings.php';
 require __DIR__ . '/auth.php';
