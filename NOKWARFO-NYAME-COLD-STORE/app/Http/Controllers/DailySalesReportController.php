@@ -9,114 +9,150 @@ use Inertia\Inertia;
 
 class DailySalesReportController extends Controller
 {
+
     public function index(Request $request)
     {
-        // Get start_date and end_date from request, default to today if missing
         $startDate = $request->input('start_date', now()->format('Y-m-d'));
         $endDate = $request->input('end_date', now()->format('Y-m-d'));
 
-        // Query sales within the date range (inclusive)
-        $salesInRange = Sale::whereDate('created_at', '>=', $startDate)
+        // Cash sales (payment_type cash or partial), paginated with custom page name 'cash_page'
+        $cash_sales = Sale::whereDate('created_at', '>=', $startDate)
             ->whereDate('created_at', '<=', $endDate)
+            ->whereIn('payment_type', ['cash', 'partial'])
             ->with(['customer', 'saleItems.product'])
-            ->get();
-
-        // Separate cash and credit sales, same as before but for the range
-        $cash_sales = $salesInRange->whereIn('payment_type', ['cash', 'partial'])->map(function ($sale) {
-            return [
-                'time' => $sale->created_at->format('H:i A'),
-                'customer' => $sale->customer ? $sale->customer->name : $sale->customer_name,
-                'products' => $sale->saleItems->pluck('product_name')->join(', '),
-                'amount' => $sale->amount_paid,
-            ];
-        })->values();
-
-        $credit_sales = $salesInRange->where('payment_type', 'credit')->map(function ($sale) {
-            return [
-                'time' => $sale->created_at->format('H:i A'),
-                'customer' => $sale->customer ? $sale->customer->name : $sale->customer_name,
-                'products' => $sale->saleItems->pluck('product_name')->join(', '),
-                'amount' => $sale->total,
-            ];
-        })->values();
-
-        // Add partial sales balances as credit sales entries
-        $partial_sales = $salesInRange->where('payment_type', 'partial');
-        foreach ($partial_sales as $sale) {
-            $owed = $sale->total - $sale->amount_paid;
-            if ($owed > 0) {
-                $credit_sales->push([
+            ->orderBy('created_at', 'desc')
+            ->simplePaginate(15, ['*'], 'cash_page')
+            ->through(function ($sale) {
+                return [
                     'time' => $sale->created_at->format('H:i A'),
                     'customer' => $sale->customer ? $sale->customer->name : $sale->customer_name,
                     'products' => $sale->saleItems->pluck('product_name')->join(', '),
-                    'amount' => $owed,
-                    'amount_paid' => $sale->amount_paid,
-                ]);
-            }
-        }
+                    'amount' => $sale->amount_paid,
+                ];
+            });
 
-        // Initialize product maps
-        $cashProductMap = [];
-        $creditProductMap = [];
-        $partialProductMap = [];
+        // Credit sales, paginated with 'credit_page'
+        $credit_sales = Sale::whereDate('created_at', '>=', $startDate)
+            ->whereDate('created_at', '<=', $endDate)
+            ->where('payment_type', 'credit')
+            ->with(['customer', 'saleItems.product'])
+            ->orderBy('created_at', 'desc')
+            ->simplePaginate(15, ['*'], 'credit_page')
+            ->through(function ($sale) {
+                return [
+                    'time' => $sale->created_at->format('H:i A'),
+                    'customer' => $sale->customer ? $sale->customer->name : $sale->customer_name,
+                    'products' => $sale->saleItems->pluck('product_name')->join(', '),
+                    'amount' => $sale->total,
+                ];
+            });
 
-        foreach ($salesInRange as $sale) {
-            if (strtolower($sale->status) !== 'completed') {
-                continue;
-            }
+        // Partial sales owed amounts - you may want to handle this separately or join with credit sales on frontend
 
-            foreach ($sale->saleItems as $item) {
-                $pid = $item->product_id;
-                $productName = $item->product->name;
-                $qty = $item->quantity;
-                $total = $item->total;
+        // Product summaries (cash)
+        $cashProductQuery = SaleItem::select('product_id')
+            ->selectRaw('SUM(quantity) as qty')
+            ->selectRaw('SUM(total) as total_amount')
+            ->whereHas('sale', function ($query) use ($startDate, $endDate) {
+                $query->whereDate('created_at', '>=', $startDate)
+                    ->whereDate('created_at', '<=', $endDate)
+                    ->where('payment_type', 'cash')
+                    ->where('status', 'completed');
+            })
+            ->groupBy('product_id')
+            ->with('product')
+            ->simplePaginate(15, ['*'], 'products_bought_page');
 
-                if ($sale->payment_type === 'cash') {
-                    if (!isset($cashProductMap[$pid])) {
-                        $cashProductMap[$pid] = [
-                            'product' => $productName,
-                            'qty' => 0,
-                            'total_amount' => 0,
-                        ];
-                    }
-                    $cashProductMap[$pid]['qty'] += $qty;
-                    $cashProductMap[$pid]['total_amount'] += $total;
-                } elseif ($sale->payment_type === 'credit') {
-                    if (!isset($creditProductMap[$pid])) {
-                        $creditProductMap[$pid] = [
-                            'product' => $productName,
-                            'qty' => 0,
-                            'total_amount' => 0,
-                        ];
-                    }
-                    $creditProductMap[$pid]['qty'] += $qty;
-                    $creditProductMap[$pid]['total_amount'] += $total;
-                } elseif ($sale->payment_type === 'partial') {
-                    if (!isset($partialProductMap[$pid])) {
-                        $partialProductMap[$pid] = [
-                            'product' => $productName,
-                            'qty' => 0,
-                            'total_amount' => 0,
-                            'amount_paid' => 0,
-                        ];
-                    }
-                    $partialProductMap[$pid]['qty'] += $qty;
-                    $partialProductMap[$pid]['total_amount'] += $total;
-                    $partialProductMap[$pid]['amount_paid'] += $sale->amount_paid;
-                }
-            }
-        }
+        $products_bought = $cashProductQuery->through(function ($item) {
+            return [
+                'product' => $item->product->name,
+                'qty' => $item->qty,
+                'total_amount' => $item->total_amount,
+            ];
+        });
+
+        // Product summaries (credit)
+        $creditProductQuery = SaleItem::select('product_id')
+            ->selectRaw('SUM(quantity) as qty')
+            ->selectRaw('SUM(total) as total_amount')
+            ->whereHas('sale', function ($query) use ($startDate, $endDate) {
+                $query->whereDate('created_at', '>=', $startDate)
+                    ->whereDate('created_at', '<=', $endDate)
+                    ->where('payment_type', 'credit')
+                    ->where('status', 'completed');
+            })
+            ->groupBy('product_id')
+            ->with('product')
+            ->simplePaginate(15, ['*'], 'credited_products_page');
+
+        $credited_products = $creditProductQuery->through(function ($item) {
+            return [
+                'product' => $item->product->name,
+                'qty' => $item->qty,
+                'total_amount' => $item->total_amount,
+            ];
+        });
+
+        // Product summaries (partial)
+        $partialProductQuery = SaleItem::select('product_id')
+            ->selectRaw('SUM(quantity) as qty')
+            ->selectRaw('SUM(total) as total_amount')
+            ->whereHas('sale', function ($query) use ($startDate, $endDate) {
+                $query->whereDate('created_at', '>=', $startDate)
+                    ->whereDate('created_at', '<=', $endDate)
+                    ->where('payment_type', 'partial')
+                    ->where('status', 'completed');
+            })
+            ->groupBy('product_id')
+            ->with('product')
+            ->simplePaginate(15, ['*'], 'partial_products_page');
+
+        $partial_products = $partialProductQuery->through(function ($item) {
+            // For amount_paid you may want to calculate differently if needed
+            return [
+                'product' => $item->product->name,
+                'qty' => $item->qty,
+                'total_amount' => $item->total_amount,
+                'amount_paid' => 0, // add logic if you want here
+            ];
+        });
+
+        // Calculate summary totals
+        $cashTotal = $cash_sales->sum('amount');
+        $creditTotal = $credit_sales->sum('amount');
+        $grandTotal = $cashTotal + $creditTotal;
+
+        $totalProductsBought = $products_bought->sum('qty');
+        $totalCreditedProducts = $credited_products->sum('qty');
+        $totalPartialProducts = $partial_products->sum('qty');
+        $totalProductsSold = $totalProductsBought + $totalCreditedProducts + $totalPartialProducts;
+
+        // Sum total amounts for products bought, credited, and partial
+        $totalProductsBoughtAmount = $products_bought->sum('total_amount');
+        $totalCreditedProductsAmount = $credited_products->sum('total_amount');
+
+        $summary = [
+            'cashTotal' => $cashTotal,
+            'creditTotal' => $creditTotal,
+            'grandTotal' => $grandTotal,
+            'totalProductsBought' => $totalProductsBought,
+            'totalCreditedProducts' => $totalCreditedProducts,
+            'totalPartialProducts' => $totalPartialProducts,
+            'totalProductsSold' => $totalProductsSold,
+        ];
 
         return Inertia::render('daily-sales-report', [
             'cash_sales' => $cash_sales,
             'credit_sales' => $credit_sales,
-            'products_bought' => collect($cashProductMap)->values(),
-            'credited_products' => collect($creditProductMap)->values(),
-            'partial_products' => collect($partialProductMap)->values(),
+            'products_bought' => $products_bought,
+            'credited_products' => $credited_products,
+            'partial_products' => $partial_products,
+            'summary' => $summary,
             'start_date' => $startDate,
             'end_date' => $endDate,
         ]);
     }
+
 
     // public function store(Request $request)
     // {
