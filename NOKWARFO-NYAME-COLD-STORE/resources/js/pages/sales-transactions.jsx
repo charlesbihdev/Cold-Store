@@ -1,13 +1,12 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/app-layout';
-import { useForm, usePage } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react'; // Added for useEffect
 import AddTransactionModal from '../components/sales/AddTransactionmodal';
 import SalesTable from '../components/sales/salesTable';
 
-function SalesTransactions() {
-    const { sales_transactions = [], products = [], customers = [] } = usePage().props;
+function SalesTransactions({ sales_transactions = [], products = [], customers = [] }) {
     const [open, setOpen] = useState(false);
     // Cart-style items state
     const [items, setItems] = useState([{ product_id: '', qty: '', unit_selling_price: '', total: '' }]);
@@ -77,11 +76,11 @@ function SalesTransactions() {
     // Summary calculations
     // const totalAmount = sales_transactions.reduce((sum, t) => sum + parseFloat(t.total), 0);
     // Cash sales: sum amount_paid for cash and partial
-    const cashAmount = sales_transactions.filter((t) => t.status === 'Completed').reduce((sum, t) => sum + parseFloat(t.amount_paid), 0);
+    const cashAmount = sales_transactions.data.filter((t) => t.status === 'Completed').reduce((sum, t) => sum + parseFloat(t.amount_paid), 0);
     // Credit sales: sum total for credit + amount_owed for partial
     const creditAmount =
-        sales_transactions.filter((t) => t.payment_type === 'Credit').reduce((sum, t) => sum + parseFloat(t.total), 0) +
-        sales_transactions.filter((t) => t.payment_type === 'Partial').reduce((sum, t) => sum + parseFloat(t.amount_owed), 0);
+        sales_transactions.data.filter((t) => t.payment_type === 'Credit').reduce((sum, t) => sum + parseFloat(t.total), 0) +
+        sales_transactions.data.filter((t) => t.payment_type === 'Partial').reduce((sum, t) => sum + parseFloat(t.amount_owed), 0);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>

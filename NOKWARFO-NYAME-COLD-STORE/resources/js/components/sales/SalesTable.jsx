@@ -2,18 +2,54 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { router } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
+import { debounce } from 'lodash'; // or implement simple debounce yourself
 import { Receipt } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import DateRangePicker from '../DateRangePicker';
 import CreditReceipt from './CreditReceipt';
 import InstantPaymentReceipt from './InstantPaymentReceipt';
 import SearchBar from './SearchBar';
 
 // Main Sales Table Component
 const SalesTable = ({ sales_transactions }) => {
-    const [searchTerm, setSearchTerm] = useState('');
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [receiptType, setReceiptType] = useState(null);
+
+    // States for filters
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Default to today
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const [startDate, setStartDate] = useState(todayStr);
+    const [endDate, setEndDate] = useState(todayStr);
+
+    // Pagination state from props
+    const currentPage = sales_transactions.current_page;
+
+    // Debounced router call
+    // useCallback to memoize debounce fn
+    const debouncedFetch = useCallback(
+        debounce((search, start, end, page) => {
+            router.get(
+                route('sales-transactions.index'),
+                { search, start_date: start, end_date: end, page },
+                { preserveState: true, preserveScroll: true, replace: true },
+            );
+        }, 500), // 500ms debounce
+        [],
+    );
+
+    // Whenever searchTerm, startDate, endDate, or currentPage changes, fire debounced fetch
+    useEffect(() => {
+        debouncedFetch(searchTerm, startDate, endDate, currentPage);
+    }, [searchTerm, startDate, endDate, currentPage, debouncedFetch]);
+
+    // DateRangePicker onChange handler
+    const handleDateChange = (value, type) => {
+        if (type === 'start') setStartDate(value);
+        else setEndDate(value);
+    };
 
     const handleDelete = (id) => {
         if (window.confirm('Are you sure you want to delete this transaction?')) {
@@ -38,17 +74,18 @@ const SalesTable = ({ sales_transactions }) => {
     };
 
     // Filter transactions based on search term
-    const filteredTransactions = sales_transactions.filter((transaction) => {
-        const searchLower = searchTerm.toLowerCase();
-        return (
-            transaction.id.toLowerCase().includes(searchLower) ||
-            transaction.customer.toLowerCase().includes(searchLower) ||
-            transaction.sale_items.some((item) => item.product.toLowerCase().includes(searchLower))
-        );
-    });
+    // const filteredTransactions = sales_transactions.data.filter((transaction) => {
+    //     const searchLower = searchTerm.toLowerCase();
+    //     return (
+    //         transaction.id.toLowerCase().includes(searchLower) ||
+    //         transaction.customer.toLowerCase().includes(searchLower) ||
+    //         transaction.sale_items.some((item) => item.product.toLowerCase().includes(searchLower))
+    //     );
+    // });
 
     return (
         <>
+            <DateRangePicker startDate={startDate} endDate={endDate} onChange={handleDateChange} />
             <Card>
                 <CardHeader>
                     <CardTitle>Sales Transactions</CardTitle>
@@ -73,7 +110,7 @@ const SalesTable = ({ sales_transactions }) => {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredTransactions.map((transaction) => (
+                            {sales_transactions.data.map((transaction) => (
                                 <TableRow key={transaction.id}>
                                     <TableCell className="font-medium">{transaction.id}</TableCell>
                                     <TableCell>{transaction.date}</TableCell>
@@ -154,8 +191,32 @@ const SalesTable = ({ sales_transactions }) => {
                         </TableBody>
                     </Table>
 
-                    {filteredTransactions.length === 0 && (
+                    {sales_transactions.data.length === 0 ? (
                         <div className="text-muted-foreground py-8 text-center">No transactions found matching your search.</div>
+                    ) : (
+                        <div className="my-3 flex items-center justify-center gap-4">
+                            {sales_transactions.prev_page_url && (
+                                <Link
+                                    preserveScroll
+                                    preserveState
+                                    href={sales_transactions.prev_page_url}
+                                    className="rounded border px-4 py-2 hover:bg-gray-100"
+                                >
+                                    « Previous
+                                </Link>
+                            )}
+                            <span className="px-4 py-2 font-medium">Page {sales_transactions.current_page}</span>
+                            {sales_transactions.next_page_url && (
+                                <Link
+                                    preserveScroll
+                                    preserveState
+                                    href={sales_transactions.next_page_url}
+                                    className="rounded border px-4 py-2 hover:bg-gray-100"
+                                >
+                                    Next »
+                                </Link>
+                            )}
+                        </div>
                     )}
                 </CardContent>
             </Card>

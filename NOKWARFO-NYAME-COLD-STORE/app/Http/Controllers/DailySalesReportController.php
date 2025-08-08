@@ -9,15 +9,20 @@ use Inertia\Inertia;
 
 class DailySalesReportController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $today = now()->format('Y-m-d');
+        // Get start_date and end_date from request, default to today if missing
+        $startDate = $request->input('start_date', now()->format('Y-m-d'));
+        $endDate = $request->input('end_date', now()->format('Y-m-d'));
 
-        // Get today's sales
-        $todaySales = Sale::whereDate('created_at', $today)->with(['customer', 'saleItems.product'])->get();
+        // Query sales within the date range (inclusive)
+        $salesInRange = Sale::whereDate('created_at', '>=', $startDate)
+            ->whereDate('created_at', '<=', $endDate)
+            ->with(['customer', 'saleItems.product'])
+            ->get();
 
-        // Separate cash and credit sales
-        $cash_sales = $todaySales->whereIn('payment_type', ['cash', 'partial'])->map(function ($sale) {
+        // Separate cash and credit sales, same as before but for the range
+        $cash_sales = $salesInRange->whereIn('payment_type', ['cash', 'partial'])->map(function ($sale) {
             return [
                 'time' => $sale->created_at->format('H:i A'),
                 'customer' => $sale->customer ? $sale->customer->name : $sale->customer_name,
@@ -26,7 +31,7 @@ class DailySalesReportController extends Controller
             ];
         })->values();
 
-        $credit_sales = $todaySales->where('payment_type', 'credit')->map(function ($sale) {
+        $credit_sales = $salesInRange->where('payment_type', 'credit')->map(function ($sale) {
             return [
                 'time' => $sale->created_at->format('H:i A'),
                 'customer' => $sale->customer ? $sale->customer->name : $sale->customer_name,
@@ -34,38 +39,37 @@ class DailySalesReportController extends Controller
                 'amount' => $sale->total,
             ];
         })->values();
-        // Add amount_owed from partials to credit_sales
-        $partial_sales = $todaySales->where('payment_type', 'partial');
+
+        // Add partial sales balances as credit sales entries
+        $partial_sales = $salesInRange->where('payment_type', 'partial');
         foreach ($partial_sales as $sale) {
-            $credit_sales->push([
-                'time' => $sale->created_at->format('H:i A'),
-                'customer' => $sale->customer ? $sale->customer->name : $sale->customer_name,
-                'products' => $sale->saleItems->pluck('product_name')->join(', '),
-                'amount' => $sale->total - $sale->amount_paid,
-                'amount_paid' => $sale->amount_paid,
-            ]);
+            $owed = $sale->total - $sale->amount_paid;
+            if ($owed > 0) {
+                $credit_sales->push([
+                    'time' => $sale->created_at->format('H:i A'),
+                    'customer' => $sale->customer ? $sale->customer->name : $sale->customer_name,
+                    'products' => $sale->saleItems->pluck('product_name')->join(', '),
+                    'amount' => $owed,
+                    'amount_paid' => $sale->amount_paid,
+                ]);
+            }
         }
 
-        // Build product summaries with sequential allocation for partial payments
-        // Initialize maps
+        // Initialize product maps
         $cashProductMap = [];
         $creditProductMap = [];
         $partialProductMap = [];
 
-        // Build product summaries
-        foreach ($todaySales as $sale) {
-            $items = $sale->saleItems;
-            foreach ($items as $item) {
+        foreach ($salesInRange as $sale) {
+            if (strtolower($sale->status) !== 'completed') {
+                continue;
+            }
+
+            foreach ($sale->saleItems as $item) {
                 $pid = $item->product_id;
                 $productName = $item->product->name;
                 $qty = $item->quantity;
                 $total = $item->total;
-                // $amountPaid = $item->amount_paid;
-                // dd($amountPaid);
-
-                if ($sale->status !== 'completed') {
-                    continue;
-                }
 
                 if ($sale->payment_type === 'cash') {
                     if (!isset($cashProductMap[$pid])) {
@@ -77,9 +81,7 @@ class DailySalesReportController extends Controller
                     }
                     $cashProductMap[$pid]['qty'] += $qty;
                     $cashProductMap[$pid]['total_amount'] += $total;
-                }
-
-                if ($sale->payment_type === 'credit') {
+                } elseif ($sale->payment_type === 'credit') {
                     if (!isset($creditProductMap[$pid])) {
                         $creditProductMap[$pid] = [
                             'product' => $productName,
@@ -89,9 +91,7 @@ class DailySalesReportController extends Controller
                     }
                     $creditProductMap[$pid]['qty'] += $qty;
                     $creditProductMap[$pid]['total_amount'] += $total;
-                }
-
-                if ($sale->payment_type === 'partial') {
+                } elseif ($sale->payment_type === 'partial') {
                     if (!isset($partialProductMap[$pid])) {
                         $partialProductMap[$pid] = [
                             'product' => $productName,
@@ -102,7 +102,7 @@ class DailySalesReportController extends Controller
                     }
                     $partialProductMap[$pid]['qty'] += $qty;
                     $partialProductMap[$pid]['total_amount'] += $total;
-                    $partialProductMap[$pid]['amount_paid'] = $sale->amount_paid;
+                    $partialProductMap[$pid]['amount_paid'] += $sale->amount_paid;
                 }
             }
         }
@@ -113,6 +113,8 @@ class DailySalesReportController extends Controller
             'products_bought' => collect($cashProductMap)->values(),
             'credited_products' => collect($creditProductMap)->values(),
             'partial_products' => collect($partialProductMap)->values(),
+            'start_date' => $startDate,
+            'end_date' => $endDate,
         ]);
     }
 
