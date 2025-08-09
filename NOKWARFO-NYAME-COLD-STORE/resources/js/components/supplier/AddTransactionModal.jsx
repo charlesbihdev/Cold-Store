@@ -164,7 +164,7 @@ function AddTransactionModal({ isOpen, onClose, supplier, errors = {} }) {
 
                 <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
                     <div>
-                        <Label htmlFor="payment_amount">Payment Amount</Label>
+                        <Label htmlFor="payment_amount">Payment Made</Label>
                         <Input
                             type="number"
                             id="payment_amount"
@@ -177,12 +177,12 @@ function AddTransactionModal({ isOpen, onClose, supplier, errors = {} }) {
                     </div>
 
                     <div>
-                        <Label>Current Balance</Label>
+                        <Label>Previous Debt</Label>
                         <Input value={currentBalance.toFixed(2)} readOnly />
                     </div>
 
                     <div>
-                        <Label>New Balance</Label>
+                        <Label>Total Debt Balance</Label>
                         <Input value={newBalance.toFixed(2)} readOnly />
                     </div>
                 </div>

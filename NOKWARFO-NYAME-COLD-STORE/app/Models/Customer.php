@@ -80,6 +80,32 @@ class Customer extends Model
         return $creditTotal + $partialTotal;
     }
 
+    public function getOutstandingBalance(): float
+    {
+        // Get total for credit sales
+        $creditTotal = $this->sales()
+            ->where('status', 'completed')
+            ->where('payment_type', 'credit')
+            ->sum('total');
+
+        // Get remaining for partial payments (total - amount_paid)
+        $partialTotal = $this->sales()
+            ->where('status', 'completed')
+            ->where('payment_type', 'partial')
+            ->sum(DB::raw('total - amount_paid'));
+
+        // Total amount the customer owes
+        $totalDebt = $creditTotal + $partialTotal;
+
+        // Total paid towards debt
+        $amountPaid = CreditCollection::where('customer_id', $this->id)
+            ->sum('amount_collected');
+
+        // Outstanding balance
+        return max($totalDebt - $amountPaid, 0);
+    }
+
+
     public function creditCollections()
     {
         return $this->hasMany(CreditCollection::class);

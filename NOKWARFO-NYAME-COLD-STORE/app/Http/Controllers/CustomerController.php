@@ -21,7 +21,7 @@ class CustomerController extends Controller
                 'name' => $customer->name,
                 'phone' => $customer->phone,
                 'address' => $customer->address,
-                'debt' => $customer->getDebt(), // NOW this will be triggered
+                'debt' => $customer->getOutstandingBalance(), // NOW this will be triggered
             ];
         });
 
