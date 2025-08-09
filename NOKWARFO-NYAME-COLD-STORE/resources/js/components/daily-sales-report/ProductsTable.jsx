@@ -3,17 +3,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 export default function ProductsTable({
     title,
-    products, // paginated data with .data, .current_page, .prev_page_url, .next_page_url
-    totalQty, // you can calculate this too inside, optional
+    products, // paginated data
+    totalQty, // already calculated in backend
+    totalAmount, // already calculated in backend
     totalAmountColor,
     showAmountPaid = false,
+    totalAmountPaid, // already calculated in backend
     onPageChange,
 }) {
-    // Calculate totals from current page data
-    const totalAmount = products.data.reduce((sum, item) => sum + parseFloat(item.total_amount), 0);
-    const totalAmountPaid = showAmountPaid ? products.data.reduce((sum, item) => sum + parseFloat(item.amount_paid || 0), 0) : 0;
-    const totalQuantity = products.data.reduce((sum, item) => sum + parseInt(item.qty), 0);
-
     const renderPagination = () => (
         <nav className="mt-4 flex justify-center space-x-2">
             <button
@@ -74,7 +71,7 @@ export default function ProductsTable({
                             }-50`}
                         >
                             <TableCell className="font-bold">Total Products</TableCell>
-                            <TableCell className="font-bold">{totalQuantity}</TableCell>
+                            <TableCell className="font-bold">{totalQty}</TableCell>
                             <TableCell className={`font-bold ${totalAmountColor}`}>GH₵{totalAmount.toFixed(2)}</TableCell>
                             {showAmountPaid && <TableCell className="font-bold text-green-600">GH₵{totalAmountPaid.toFixed(2)}</TableCell>}
                         </TableRow>
