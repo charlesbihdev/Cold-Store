@@ -34,6 +34,7 @@ function Dashboard({
             { date: newDate },
             {
                 preserveState: true,
+                preserveScroll: true,
                 replace: true,
             },
         );

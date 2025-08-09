@@ -1,11 +1,35 @@
 import AppLayout from '@/layouts/app-layout';
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { DollarSign, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
+import DateRangePicker from '../components/DateRangePicker';
 import SalesTable from '../components/profit/SalesTable';
 import SummaryCard from '../components/profit/SummaryCard';
 
 function ProfitAnalysis() {
     const { total_product_sales = [], paid_product_sales = [] } = usePage().props;
+
+    // Default start and end dates - you can adjust as needed
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+
+    // Handle date changes - reset page params to 1 on new date filter
+    const handleDateChange = (value, type) => {
+        const newStartDate = type === 'start' ? value : startDate;
+        const newEndDate = type === 'end' ? value : endDate;
+
+        if (type === 'start') setStartDate(value);
+        if (type === 'end') setEndDate(value);
+
+        router.get(
+            route('profit-analysis.index'), // Change this to your actual route name if different
+            {
+                start_date: newStartDate,
+                end_date: newEndDate,
+            },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
 
     const breadcrumbs = [{ title: 'Profit Analysis', href: '/profit-analysis' }];
 
@@ -19,6 +43,11 @@ function ProfitAnalysis() {
             <div className="min-h-screen space-y-6 bg-gray-100 p-6">
                 <div className="flex items-center justify-between">
                     <h1 className="text-3xl font-bold">Profit Analysis</h1>
+                </div>
+
+                {/* Date range picker */}
+                <div className="mb-6 flex items-center space-x-4">
+                    <DateRangePicker startDate={startDate} endDate={endDate} onChange={handleDateChange} />
                 </div>
 
                 {/* Summary Cards */}
