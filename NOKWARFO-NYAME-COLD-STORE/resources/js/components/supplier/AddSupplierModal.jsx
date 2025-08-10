@@ -58,6 +58,7 @@ function AddSupplierModal({ isOpen, onClose, errors = {} }) {
                                 placeholder="Contact person name"
                                 value={data.contact_person}
                                 onChange={(e) => setData('contact_person', e.target.value)}
+                                required
                             />
                             {errors.contact_person && <InputError message={errors.contact_person} className="mt-1" />}
                         </div>
