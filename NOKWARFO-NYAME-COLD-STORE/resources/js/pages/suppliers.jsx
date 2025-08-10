@@ -1,251 +1,303 @@
-import { useForm, router } from '@inertiajs/react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Plus, Users, Edit, Trash2, Phone } from "lucide-react"
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import InputError from '@/components/InputError';
+import { router } from '@inertiajs/react';
+import { CreditCard, DollarSign, Edit, History, Mail, MapPin, Phone, Plus, Trash2, Users } from 'lucide-react';
+
 import { useState } from 'react';
 
+// Import our custom components
+import AddSupplierModal from '../components/supplier/AddSupplierModal';
+import AddTransactionModal from '../components/supplier/AddTransactionModal';
+import EditSupplierModal from '../components/supplier/EditSupplierModal';
+import MakePaymentModal from '../components/supplier/MakePaymentModal';
+import SupplierBalanceCard from '../components/supplier/SupplierBalanceCard';
+
 function Suppliers({ suppliers = [], errors = {} }) {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingSupplier, setEditingSupplier] = useState(null);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
+    const [editingSupplier, setEditingSupplier] = useState(null);
+    const [selectedSupplier, setSelectedSupplier] = useState(null);
 
-  const { data, setData, post, put, processing, reset } = useForm({
-    name: '',
-    phone: '',
-    additional_info: '',
-  });
+    const breadcrumbs = [{ title: 'Suppliers', href: '/suppliers' }];
 
-  const breadcrumbs = [
-    { title: 'Suppliers', href: '/suppliers' },
-  ];
-
-  function handleSubmit(e) {
-    e.preventDefault();
-    post(route('suppliers.store'), {
-      onSuccess: () => {
-        reset();
-        setIsAddModalOpen(false);
-      },
-      preserveScroll: true,
-      preserveState: true,
-      only: ["suppliers", "errors", "flash"],
-    });
-  }
-
-  function handleEdit(supplier) {
-    setEditingSupplier(supplier);
-    setData({
-      name: supplier.name,
-      phone: supplier.phone || '',
-      additional_info: supplier.additional_info || '',
-    });
-    setIsEditModalOpen(true);
-  }
-
-  function handleUpdate(e) {
-    e.preventDefault();
-    put(route('suppliers.update', editingSupplier.id), {
-      onSuccess: () => {
-        reset();
-        setIsEditModalOpen(false);
-        setEditingSupplier(null);
-      },
-      preserveScroll: true,
-      preserveState: true,
-      only: ["suppliers", "errors", "flash"],
-    });
-  }
-
-  function handleDelete(supplierId) {
-    if (confirm('Are you sure you want to delete this supplier?')) {
-      router.delete(route('suppliers.destroy', supplierId), {
-        preserveScroll: true,
-        preserveState: true,
-        only: ["suppliers", "flash"],
-      });
+    function handleEdit(supplier) {
+        setEditingSupplier(supplier);
+        setIsEditModalOpen(true);
     }
-  }
 
-  return (
-    <AppLayout breadcrumbs={breadcrumbs}>
-      <div className="p-6 space-y-6 bg-gray-100 min-h-screen">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Suppliers</h1>
-          
-          {/* Add Supplier Modal */}
-          <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setIsAddModalOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Supplier
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Supplier</DialogTitle>
-                <DialogDescription>
-                  Enter the details for the new supplier. All fields marked with * are required.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    Supplier Name *
-                  </Label>
-                  <div className="col-span-3">
-                    <Input id="name" placeholder="Enter supplier name" value={data.name} onChange={e => setData('name', e.target.value)} required />
-                    {errors.name && (
-                      <InputError message={errors.name} className="mt-2" />
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="phone" className="text-right">
-                    Phone
-                  </Label>
-                  <div className="col-span-3">
-                    <Input id="phone" placeholder="+233 XX XXX XXXX" value={data.phone} onChange={e => setData('phone', e.target.value)} />
-                    {errors.phone && (
-                      <InputError message={errors.phone} className="mt-2" />
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="additional_info" className="text-right">
-                    Additional Info
-                  </Label>
-                  <div className="col-span-3">
-                    <Textarea id="additional_info" placeholder="Notes or info" value={data.additional_info} onChange={e => setData('additional_info', e.target.value)} />
-                    {errors.additional_info && (
-                      <InputError message={errors.additional_info} className="mt-2" />
-                    )}
-                  </div>
-                </div>
-                <Button type="submit" disabled={processing}>Add Supplier</Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+    function handleDelete(supplierId) {
+        if (confirm('Are you sure you want to delete this supplier?')) {
+            router.delete(route('suppliers.destroy', supplierId), {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['suppliers', 'flash', 'errors'],
+            });
+        }
+    }
 
-        {/* Edit Supplier Modal */}
-        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Supplier</DialogTitle>
-              <DialogDescription>
-                Update the supplier information. All fields marked with * are required.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleUpdate} className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-name" className="text-right">
-                  Supplier Name *
-                </Label>
-                <div className="col-span-3">
-                  <Input id="edit-name" placeholder="Enter supplier name" value={data.name} onChange={e => setData('name', e.target.value)} required />
-                  {errors.name && (
-                    <InputError message={errors.name} className="mt-2" />
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-phone" className="text-right">
-                  Phone
-                </Label>
-                <div className="col-span-3">
-                  <Input id="edit-phone" placeholder="+233 XX XXX XXXX" value={data.phone} onChange={e => setData('phone', e.target.value)} />
-                  {errors.phone && (
-                    <InputError message={errors.phone} className="mt-2" />
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-additional_info" className="text-right">
-                  Additional Info
-                </Label>
-                <div className="col-span-3">
-                  <Textarea id="edit-additional_info" placeholder="Notes or info" value={data.additional_info} onChange={e => setData('additional_info', e.target.value)} />
-                  {errors.additional_info && (
-                    <InputError message={errors.additional_info} className="mt-2" />
-                  )}
-                </div>
-              </div>
-              <Button type="submit" disabled={processing}>Update Supplier</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+    function handleMakePayment(supplier) {
+        setSelectedSupplier(supplier);
+        setIsPaymentModalOpen(true);
+    }
 
-        {/* Suppliers List */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Supplier Directory
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Supplier Name</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Additional Info</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {suppliers.map((supplier) => (
-                  <TableRow key={supplier.id}>
-                    <TableCell className="font-medium">{supplier.name}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-gray-500" />
-                        {supplier.phone || 'N/A'}
-                      </div>
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate" title={supplier.additional_info}>
-                      {supplier.additional_info || 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={supplier.is_active ? "default" : "secondary"}>
-                        {supplier.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(supplier)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleDelete(supplier.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {suppliers.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      No suppliers found. Add your first supplier to get started.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
-    </AppLayout>
-  )
+    function handleAddTransaction(supplier) {
+        setSelectedSupplier(supplier);
+        setIsTransactionModalOpen(true);
+    }
+
+    function handleViewTransactions(supplier) {
+        router.get(route('suppliers.transactions', supplier.id));
+    }
+
+    function toggleSupplierStatus(supplier) {
+        router.patch(
+            route('suppliers.toggle-status', supplier.id),
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                only: ['suppliers', 'flash'],
+            },
+        );
+    }
+
+    // Calculate summary stats
+    const summaryStats = {
+        totalSuppliers: suppliers.length,
+        activeSuppliers: suppliers.filter((s) => s.is_active).length,
+        totalDebt: suppliers.reduce((sum, s) => sum + parseFloat(s.current_balance || 0), 0),
+        suppliersWithDebt: suppliers.filter((s) => parseFloat(s.current_balance || 0) > 0).length,
+    };
+
+    return (
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <div className="min-h-screen space-y-6 bg-gray-100 p-6">
+                {/* Header Section */}
+                <div className="flex items-center justify-between">
+                    <h1 className="text-3xl font-bold">Supplier Management</h1>
+                    <Button onClick={() => setIsAddModalOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Supplier
+                    </Button>
+                </div>
+
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="flex items-center space-x-2">
+                                <Users className="h-5 w-5 text-blue-500" />
+                                <div>
+                                    <p className="text-sm text-gray-600">Total Suppliers</p>
+                                    <p className="text-2xl font-bold">{summaryStats.totalSuppliers}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="flex items-center space-x-2">
+                                <Users className="h-5 w-5 text-green-500" />
+                                <div>
+                                    <p className="text-sm text-gray-600">Active Suppliers</p>
+                                    <p className="text-2xl font-bold">{summaryStats.activeSuppliers}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="flex items-center space-x-2">
+                                <DollarSign className="h-5 w-5 text-red-500" />
+                                <div>
+                                    <p className="text-sm text-gray-600">Total Outstanding</p>
+                                    <p className="text-2xl font-bold">GHC {summaryStats.totalDebt.toFixed(2)}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardContent className="p-4">
+                            <div className="flex items-center space-x-2">
+                                <CreditCard className="h-5 w-5 text-orange-500" />
+                                <div>
+                                    <p className="text-sm text-gray-600">With Outstanding Debt</p>
+                                    <p className="text-2xl font-bold">{summaryStats.suppliersWithDebt}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Suppliers Table */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Users className="h-5 w-5" />
+                            Supplier Directory
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Supplier Details</TableHead>
+                                    <TableHead>Contact Info</TableHead>
+                                    <TableHead>Financial Status</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {suppliers.map((supplier) => (
+                                    <TableRow key={supplier.id}>
+                                        <TableCell>
+                                            <div>
+                                                <p className="font-medium">{supplier.name}</p>
+                                                {supplier.contact_person && <p className="text-sm text-gray-500">{supplier.contact_person}</p>}
+                                            </div>
+                                        </TableCell>
+
+                                        <TableCell>
+                                            <div className="space-y-1">
+                                                {supplier.phone && (
+                                                    <div className="flex items-center gap-1 text-sm">
+                                                        <Phone className="h-3 w-3" />
+                                                        {supplier.phone}
+                                                    </div>
+                                                )}
+                                                {supplier.email && (
+                                                    <div className="flex items-center gap-1 text-sm">
+                                                        <Mail className="h-3 w-3" />
+                                                        {supplier.email}
+                                                    </div>
+                                                )}
+                                                {supplier.address && (
+                                                    <div className="flex items-center gap-1 text-sm">
+                                                        <MapPin className="h-3 w-3" />
+                                                        <span className="max-w-32 truncate">{supplier.address}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </TableCell>
+
+                                        <TableCell>
+                                            <SupplierBalanceCard supplier={supplier} />
+                                        </TableCell>
+
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <Badge
+                                                    variant={supplier.is_active ? 'default' : 'secondary'}
+                                                    className="cursor-pointer"
+                                                    onClick={() => toggleSupplierStatus(supplier)}
+                                                >
+                                                    {supplier.is_active ? 'Active' : 'Inactive'}
+                                                </Badge>
+                                                {supplier.has_outstanding_debt && (
+                                                    <Badge variant="destructive" className="text-xs text-white">
+                                                        Debt
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </TableCell>
+
+                                        <TableCell>
+                                            <div className="flex flex-wrap gap-1">
+                                                <Button variant="outline" size="sm" onClick={() => handleEdit(supplier)}>
+                                                    <Edit className="h-3 w-3" />
+                                                </Button>
+
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleViewTransactions(supplier)}
+                                                    title="View Transactions"
+                                                >
+                                                    <History className="h-3 w-3" />
+                                                </Button>
+
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleAddTransaction(supplier)}
+                                                    title="Add Purchase"
+                                                    className="text-blue-600"
+                                                >
+                                                    <Plus className="h-3 w-3" />
+                                                </Button>
+
+                                                {supplier.has_outstanding_debt && (
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleMakePayment(supplier)}
+                                                        title="Make Payment"
+                                                        className="text-green-600"
+                                                    >
+                                                        <DollarSign className="h-3 w-3" />
+                                                    </Button>
+                                                )}
+
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleDelete(supplier.id)}
+                                                    className="text-red-600"
+                                                    disabled={supplier.has_outstanding_debt}
+                                                    title={
+                                                        supplier.has_outstanding_debt
+                                                            ? 'Cannot delete supplier with outstanding debt'
+                                                            : 'Delete supplier'
+                                                    }
+                                                >
+                                                    <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {suppliers.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-muted-foreground py-8 text-center">
+                                            No suppliers found. Add your first supplier to get started.
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+
+                {/* Modals */}
+                <AddSupplierModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} errors={errors} />
+
+                <EditSupplierModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} supplier={editingSupplier} errors={errors} />
+
+                <MakePaymentModal
+                    isOpen={isPaymentModalOpen}
+                    onClose={() => setIsPaymentModalOpen(false)}
+                    supplier={selectedSupplier}
+                    errors={errors}
+                />
+
+                <AddTransactionModal
+                    isOpen={isTransactionModalOpen}
+                    onClose={() => setIsTransactionModalOpen(false)}
+                    supplier={selectedSupplier}
+                    errors={errors}
+                />
+            </div>
+        </AppLayout>
+    );
 }
 
-export default Suppliers; 
+export default Suppliers;

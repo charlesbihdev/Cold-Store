@@ -1,255 +1,153 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { Calendar, DollarSign, Package } from 'lucide-react';
+import { useState } from 'react';
 
-function DailySalesReport({ cash_sales = [], credit_sales = [], products_bought = [], credited_products = [], partial_products = [] }) {
-    const breadcrumbs = [{ title: 'Daily Sales Report', href: '/daily-sales-report' }];
+import { router } from '@inertiajs/react';
+import ProductsTable from '../components/daily-sales-report/ProductsTable';
+import SalesTable from '../components/daily-sales-report/SalesTable';
+import SummaryCard from '../components/daily-sales-report/SummaryCard';
+import DateRangePicker from '../components/DateRangePicker';
 
-    const cashTotal = cash_sales.reduce((sum, sale) => sum + parseFloat(sale.amount), 0);
-    const creditTotal = credit_sales.reduce((sum, sale) => sum + parseFloat(sale.amount), 0);
-    const grandTotal = cashTotal + creditTotal;
+export default function DailySalesReport({
+    cash_sales,
+    credit_sales,
+    products_bought,
+    credited_products,
+    partial_products,
+    summary,
+    start_date,
+    end_date,
+}) {
+    // Use dates from props or default to today
+    const today = new Date().toISOString().slice(0, 10);
+    const [startDate, setStartDate] = useState(start_date || today);
+    const [endDate, setEndDate] = useState(end_date || today);
 
-    const totalProductsBought = products_bought.reduce((sum, item) => sum + parseInt(item.qty), 0);
-    const totalCreditedProducts = credited_products.reduce((sum, item) => sum + parseInt(item.qty), 0);
-    const totalPartialProducts = partial_products.reduce((sum, item) => sum + parseInt(item.qty), 0);
+    // Handle date changes - reset page params to 1 on new date filter
+    const handleDateChange = (value, type) => {
+        const newStartDate = type === 'start' ? value : startDate;
+        const newEndDate = type === 'end' ? value : endDate;
+
+        if (type === 'start') setStartDate(value);
+        if (type === 'end') setEndDate(value);
+
+        router.get(
+            route('daily-sales-report.index'),
+            {
+                start_date: newStartDate,
+                end_date: newEndDate,
+                cash_page: 1,
+                credit_page: 1,
+                bought_page: 1,
+                credited_page: 1,
+                partial_page: 1,
+            },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
+
+    // Pagination change handler per table
+    const handlePageChange = (pageParam, page) => {
+        router.get(
+            route('daily-sales-report.index'),
+            {
+                start_date: startDate,
+                end_date: endDate,
+                [pageParam]: page,
+            },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
+        <AppLayout breadcrumbs={[{ title: 'Daily Sales Report', href: '/daily-sales-report' }]}>
             <div className="min-h-screen space-y-6 bg-gray-100 p-6">
                 <div className="flex items-center justify-between">
                     <h1 className="text-3xl font-bold">Daily Sales Report</h1>
                 </div>
 
+                <DateRangePicker startDate={startDate} endDate={endDate} onChange={handleDateChange} />
+
                 {/* Summary Cards */}
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Cash Sales</CardTitle>
-                            <DollarSign className="h-4 w-4 text-green-600" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-green-600">GH₵{cashTotal.toFixed(2)}</div>
-                            <p className="text-muted-foreground text-xs">{cash_sales.length} transactions</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Credit Sales</CardTitle>
-                            <Package className="h-4 w-4 text-orange-600" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-orange-600">GH₵{creditTotal.toFixed(2)}</div>
-                            <p className="text-muted-foreground text-xs">{credit_sales.length} transactions</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Grand Total</CardTitle>
-                            <Calendar className="h-4 w-4 text-blue-600" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-blue-600">GH₵{grandTotal.toFixed(2)}</div>
-                            <p className="text-muted-foreground text-xs">Cash + Credit</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Products Sold</CardTitle>
-                            <Package className="h-4 w-4 text-purple-600" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-purple-600">
-                                {totalProductsBought + totalCreditedProducts + totalPartialProducts}
-                            </div>
-                            <p className="text-muted-foreground text-xs">Total units</p>
-                        </CardContent>
-                    </Card>
+                    <SummaryCard
+                        title="Cash Sales"
+                        icon={DollarSign}
+                        amount={`GH₵${summary.cashTotal.toFixed(2)}`}
+                        subtitle={`${cash_sales.data.length} transactions`}
+                        color="text-green-600"
+                    />
+                    <SummaryCard
+                        title="Credit Sales"
+                        icon={Package}
+                        amount={`GH₵${summary.creditTotal.toFixed(2)}`}
+                        subtitle={`${credit_sales.data.length} transactions`}
+                        color="text-orange-600"
+                    />
+                    <SummaryCard
+                        title="Grand Total"
+                        icon={Calendar}
+                        amount={`GH₵${summary.grandTotal.toFixed(2)}`}
+                        subtitle="Cash + Credit"
+                        color="text-blue-600"
+                    />
+                    <SummaryCard
+                        title="Products Sold"
+                        icon={Package}
+                        amount={summary.totalProductsSold}
+                        subtitle="Total units"
+                        color="text-purple-600"
+                    />
                 </div>
 
+                {/* Sales Tables */}
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    {/* Cash Sales */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Cash Sales Today</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Time</TableHead>
-                                        <TableHead>Customer</TableHead>
-                                        <TableHead>Products</TableHead>
-                                        <TableHead>Amount</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {cash_sales.map((sale, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell>{sale.time}</TableCell>
-                                            <TableCell className="font-medium">{sale.customer}</TableCell>
-                                            <TableCell>{sale.products}</TableCell>
-                                            <TableCell className="font-medium">GH₵{parseFloat(sale.amount).toFixed(2)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                    <TableRow className="bg-green-50">
-                                        <TableCell colSpan={3} className="font-bold">
-                                            Total Cash Sales
-                                        </TableCell>
-                                        <TableCell className="font-bold text-green-600">GH₵{cashTotal.toFixed(2)}</TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-
-                    {/* Credit Sales */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Credit Sales Today</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Time</TableHead>
-                                        <TableHead>Customer</TableHead>
-                                        <TableHead>Products</TableHead>
-                                        <TableHead>Amount</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {credit_sales.map((sale, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell>{sale.time}</TableCell>
-                                            <TableCell className="font-medium">{sale.customer}</TableCell>
-                                            <TableCell>{sale.products}</TableCell>
-                                            <TableCell className="font-medium">GH₵{parseFloat(sale.amount).toFixed(2)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                    <TableRow className="bg-orange-50">
-                                        <TableCell colSpan={3} className="font-bold">
-                                            Total Credit Sales
-                                        </TableCell>
-                                        <TableCell className="font-bold text-orange-600">GH₵{creditTotal.toFixed(2)}</TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
+                    <SalesTable
+                        title="Cash Sales"
+                        sales={cash_sales}
+                        amountTotal={summary.cashTotal}
+                        amountColor="text-green-600"
+                        onPageChange={(page) => handlePageChange('cash_page', page)}
+                    />
+                    <SalesTable
+                        title="Credit Sales"
+                        sales={credit_sales}
+                        amountTotal={summary.creditTotal}
+                        amountColor="text-orange-600"
+                        onPageChange={(page) => handlePageChange('credit_page', page)}
+                    />
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    {/* Products Bought */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Products Bought (Cash Sales by Product)</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Product</TableHead>
-                                        <TableHead>Quantity</TableHead>
-                                        <TableHead>Total Amount</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {products_bought.map((item, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="font-medium">{item.product}</TableCell>
-                                            <TableCell>{item.qty}</TableCell>
-                                            <TableCell className="font-medium">GH₵{parseFloat(item.total_amount).toFixed(2)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                    <TableRow className="bg-green-50">
-                                        <TableCell className="font-bold">Total Products</TableCell>
-                                        <TableCell className="font-bold">{totalProductsBought}</TableCell>
-                                        <TableCell className="font-bold text-green-600">
-                                            GH₵{products_bought.reduce((sum, item) => sum + parseFloat(item.total_amount), 0).toFixed(2)}
-                                        </TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-
-                    {/* Credited Products */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Credited Products (Credit Sales by Product)</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Product</TableHead>
-                                        <TableHead>Quantity</TableHead>
-                                        <TableHead>Total Amount</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {credited_products.map((item, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="font-medium">{item.product}</TableCell>
-                                            <TableCell>{item.qty}</TableCell>
-                                            <TableCell className="font-medium">GH₵{parseFloat(item.total_amount).toFixed(2)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                    <TableRow className="bg-orange-50">
-                                        <TableCell className="font-bold">Total Products</TableCell>
-                                        <TableCell className="font-bold">{totalCreditedProducts}</TableCell>
-                                        <TableCell className="font-bold text-orange-600">
-                                            GH₵{credited_products.reduce((sum, item) => sum + parseFloat(item.total_amount), 0).toFixed(2)}
-                                        </TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-
-                    {/* Credited Products */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Partial Products (Partial product Sales)</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Product</TableHead>
-                                        <TableHead>Quantity</TableHead>
-                                        <TableHead>Total Amount</TableHead>
-                                        <TableHead>Amount Paid</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {partial_products.map((item, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="font-medium">{item.product}</TableCell>
-                                            <TableCell>{item.qty}</TableCell>
-                                            <TableCell className="font-medium">GH₵{parseFloat(item.total_amount).toFixed(2)}</TableCell>
-                                            <TableCell className="font-medium">GH₵{parseFloat(item.amount_paid).toFixed(2)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                    <TableRow className="bg-orange-50">
-                                        <TableCell className="font-bold">Total Products</TableCell>
-                                        <TableCell className="font-bold">{totalPartialProducts}</TableCell>
-                                        <TableCell className="font-bold text-yellow-600">
-                                            GH₵{partial_products.reduce((sum, item) => sum + parseFloat(item.total_amount), 0).toFixed(2)}
-                                        </TableCell>
-                                        <TableCell className="font-bold text-green-600">
-                                            GH₵{partial_products.reduce((sum, item) => sum + parseFloat(item.amount_paid), 0).toFixed(2)}
-                                        </TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
+                {/* Products Tables */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                    <ProductsTable
+                        title="Products Bought (Cash Sales by Product)"
+                        products={products_bought}
+                        totalQty={summary.totalProductsBought}
+                        totalAmount={summary.totalProductsBoughtAmount}
+                        totalAmountColor="text-green-600"
+                        onPageChange={(page) => handlePageChange('bought_page', page)}
+                    />
+                    <ProductsTable
+                        title="Credited Products (Credit Sales by Product)"
+                        products={credited_products}
+                        totalQty={summary.totalCreditedProducts}
+                        totalAmount={summary.totalCreditedProductsAmount}
+                        totalAmountColor="text-orange-600"
+                        onPageChange={(page) => handlePageChange('credited_page', page)}
+                    />
+                    <ProductsTable
+                        title="Partial Products (Partial product Sales)"
+                        products={partial_products}
+                        totalQty={summary.totalPartialProducts}
+                        totalAmount={summary.totalPartialProductsAmount}
+                        totalAmountColor="text-yellow-600"
+                        showAmountPaid={true}
+                        totalAmountPaid={summary.totalPartialProductsAmountPaid}
+                        onPageChange={(page) => handlePageChange('partial_page', page)}
+                    />
                 </div>
             </div>
         </AppLayout>
     );
 }
-
-export default DailySalesReport;

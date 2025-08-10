@@ -265,6 +265,7 @@ function CreditCollection() {
                                                     placeholder="Expense description"
                                                     value={expenseFormData.description}
                                                     onChange={(e) => setExpenseFormData('description', e.target.value)}
+                                                    required
                                                 />
                                                 {expenseErrors.description && <InputError message={expenseErrors.description} className="mt-2" />}
                                             </div>
@@ -280,6 +281,7 @@ function CreditCollection() {
                                                     placeholder="0.00"
                                                     value={expenseFormData.amount}
                                                     onChange={(e) => setExpenseFormData('amount', e.target.value)}
+                                                    required
                                                 />
                                                 {expenseErrors.amount && <InputError message={expenseErrors.amount} className="mt-2" />}
                                             </div>

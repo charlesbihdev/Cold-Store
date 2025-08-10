@@ -10,67 +10,105 @@ use Inertia\Inertia;
 
 class StockControlController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $date = now()->toDateString();
-        $stock_movements = StockMovement::with(['product', 'supplier'])->orderByDesc('created_at')->get();
+        // Validate and parse dates
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+
+        $today = now()->toDateString();
+
+        // Default to today if no dates provided
+        if (!$startDate && !$endDate) {
+            $startDate = $today;
+            $endDate = $today;
+        } elseif ($startDate && !$endDate) {
+            $endDate = $startDate;
+        } elseif (!$startDate && $endDate) {
+            $startDate = $endDate;
+        }
+
+        // Ensure startDate <= endDate
+        if ($startDate > $endDate) {
+            // Swap if needed
+            [$startDate, $endDate] = [$endDate, $startDate];
+        }
+
+        // Load data
+        $stock_movements = StockMovement::with(['product', 'supplier'])
+            ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->orderByDesc('created_at')
+            ->get();
+
         $products = Product::with('supplier')->orderBy('name')->get();
         $suppliers = Supplier::where('is_active', true)->get();
+
         $stock_activity_summary = [];
+
         foreach ($products as $product) {
-            // Stock Received today
-            $stockReceivedToday = $product->stockMovements()
-                ->whereDate('created_at', $date)
+            // Stock Received in date range
+            $stockReceivedInRange = $product->stockMovements()
+                ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
                 ->where('type', 'received')
                 ->sum('quantity');
-            // Adjusted today
-            $adjustedToday = $product->stockMovements()
-                ->whereDate('created_at', $date)
+
+            // Adjusted in date range
+            $adjustedInRange = $product->stockMovements()
+                ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
                 ->where('type', 'adjusted')
                 ->sum('quantity');
-            // Previous Stock: all received + adjusted before today, minus all sold before today
+
+            // Previous Stock: all received + adjusted before startDate, minus all sold before startDate
             $receivedBefore = $product->stockMovements()
-                ->where('created_at', '<', $date)
+                ->where('created_at', '<', $startDate)
                 ->where('type', 'received')
                 ->sum('quantity');
+
             $adjustedBefore = $product->stockMovements()
-                ->where('created_at', '<', $date)
+                ->where('created_at', '<', $startDate)
                 ->where('type', 'adjusted')
                 ->sum('quantity');
+
             $soldBefore = $product->stockMovements()
-                ->where('created_at', '<', $date)
+                ->where('created_at', '<', $startDate)
                 ->where('type', 'sold')
                 ->sum('quantity');
+
             $previousStock = $receivedBefore + $adjustedBefore - $soldBefore;
+
             // Total Available
-            $totalAvailable = $previousStock + $stockReceivedToday + $adjustedToday;
-            // Cash Sales today
+            $totalAvailable = $previousStock + $stockReceivedInRange + $adjustedInRange;
+
+            // Sales in date range by payment type
             $cashSales = $product->saleItems()
-                ->whereHas('sale', function ($q) use ($date) {
-                    $q->whereDate('created_at', $date)->where('payment_type', 'cash');
+                ->whereHas('sale', function ($q) use ($startDate, $endDate) {
+                    $q->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+                        ->where('payment_type', 'cash');
                 })
                 ->sum('quantity');
-            // Credit Sales today
+
             $creditSales = $product->saleItems()
-                ->whereHas('sale', function ($q) use ($date) {
-                    $q->whereDate('created_at', $date)->where('payment_type', 'credit');
+                ->whereHas('sale', function ($q) use ($startDate, $endDate) {
+                    $q->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+                        ->where('payment_type', 'credit');
                 })
                 ->sum('quantity');
 
             $partialSales = $product->saleItems()
-                ->whereHas('sale', function ($q) use ($date) {
-                    $q->whereDate('created_at', $date)->where('payment_type', 'partial');
+                ->whereHas('sale', function ($q) use ($startDate, $endDate) {
+                    $q->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+                        ->where('payment_type', 'partial');
                 })
                 ->sum('quantity');
 
-            // Total Sales
             $totalSales = $cashSales + $creditSales + $partialSales;
+
             // Remaining Stock
             $remainingStock = $totalAvailable - $totalSales;
-            // $remainingStock = $totalAvailable;
+
             $stock_activity_summary[] = [
                 'product' => $product->name,
-                'stock_received_today' => $stockReceivedToday + $adjustedToday,
+                'stock_received_today' => $stockReceivedInRange + $adjustedInRange, // name kept for UI consistency
                 'previous_stock' => $previousStock,
                 'total_available' => $totalAvailable,
                 'stock_available' => $totalAvailable,
@@ -81,12 +119,14 @@ class StockControlController extends Controller
                 'remaining_stock' => $remainingStock,
             ];
         }
+
         return Inertia::render('stock-control', [
             'stock_movements' => $stock_movements,
             'products' => $products,
             'suppliers' => $suppliers,
             'stock_activity_summary' => $stock_activity_summary,
-            'date' => $date,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
         ]);
     }
 
@@ -112,7 +152,7 @@ class StockControlController extends Controller
         }
         StockMovement::create($validated);
         // Do not use preserveState or preserveScroll for stock_activity_summary, so the frontend gets fresh data
-        return redirect()->route('stock-control.index');
+        return redirect()->route('stock-control.index')->with('success', 'Stock added Successfully.');
     }
 
     public function destroy($id)

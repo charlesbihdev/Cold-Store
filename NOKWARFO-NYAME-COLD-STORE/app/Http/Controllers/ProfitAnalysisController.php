@@ -15,22 +15,32 @@ use Illuminate\Support\Facades\DB;
 
 class ProfitAnalysisController extends Controller
 {
-    public function index()
+
+    public function index(Request $request)
     {
-        // All sales (cash, credit, partial)
-        $total_product_sales = SaleItem::with('sale')
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+
+        // Build base query for sales with date filtering if dates provided
+        $saleDateFilter = function ($query) use ($startDate, $endDate) {
+            if ($startDate) {
+                $query->whereDate('created_at', '>=', $startDate);
+            }
+            if ($endDate) {
+                $query->whereDate('created_at', '<=', $endDate);
+            }
+        };
+
+        // All sales (cash, credit, partial) filtered by date range
+        $total_product_sales = SaleItem::whereHas('sale', $saleDateFilter)
+            ->with('sale')
             ->get()
             ->groupBy('product_id')
             ->map(function ($items) {
                 $totalQty = $items->sum('quantity');
-                $totalRevenue = $items->sum(function ($item) {
-                    return ($item->unit_selling_price ?? 0) * $item->quantity;
-                });
-                $totalCost = $items->sum(function ($item) {
-                    return ($item->unit_cost_price ?? 0) * $item->quantity;
-                });
+                $totalRevenue = $items->sum(fn($item) => ($item->unit_selling_price ?? 0) * $item->quantity);
+                $totalCost = $items->sum(fn($item) => ($item->unit_cost_price ?? 0) * $item->quantity);
                 $avgUnitSellingPrice = $totalQty > 0 ? $totalRevenue / $totalQty : 0;
-
                 $avgUnitCostPrice = $totalQty > 0 ? $totalCost / $totalQty : 0;
 
                 return [
@@ -45,19 +55,23 @@ class ProfitAnalysisController extends Controller
                 ];
             })->values();
 
-        // Cash-only sales
-        $paid_product_sales = SaleItem::whereHas('sale', fn($q) => $q->where('payment_type', 'cash'))
+        // Cash-only sales filtered by date range
+        $paid_product_sales = SaleItem::whereHas('sale', function ($query) use ($startDate, $endDate) {
+            $query->where('payment_type', 'cash');
+            if ($startDate) {
+                $query->whereDate('created_at', '>=', $startDate);
+            }
+            if ($endDate) {
+                $query->whereDate('created_at', '<=', $endDate);
+            }
+        })
             ->with('sale')
             ->get()
             ->groupBy('product_id')
             ->map(function ($items) {
                 $totalQty = $items->sum('quantity');
-                $totalRevenue = $items->sum(function ($item) {
-                    return ($item->unit_selling_price ?? 0) * $item->quantity;
-                });
-                $totalCost = $items->sum(function ($item) {
-                    return ($item->unit_cost_price ?? 0) * $item->quantity;
-                });
+                $totalRevenue = $items->sum(fn($item) => ($item->unit_selling_price ?? 0) * $item->quantity);
+                $totalCost = $items->sum(fn($item) => ($item->unit_cost_price ?? 0) * $item->quantity);
                 $avgUnitCostPrice = $totalQty > 0 ? $totalCost / $totalQty : 0;
                 $avgUnitSellingPrice = $totalQty > 0 ? $totalRevenue / $totalQty : 0;
 

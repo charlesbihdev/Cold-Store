@@ -14,8 +14,8 @@ class BankTransferController extends Controller
     {
         $bank_transfers = BankTransfer::with('tag')
             ->orderByDesc('created_at')
-            ->get()
-            ->map(function ($transfer) {
+            ->paginate(25)
+            ->through(function ($transfer) {
                 return [
                     'id' => $transfer->id,
                     'date' => $transfer->date ? $transfer->date->format('d M, Y') : null,
@@ -29,6 +29,9 @@ class BankTransferController extends Controller
                     'tag' => $transfer->tag ? ['id' => $transfer->tag->id, 'name' => $transfer->tag->name] : null,
                 ];
             });
+
+
+        // dd($bank_transfers);
 
 
         $tags = BankTransferTag::orderBy('name')->get();

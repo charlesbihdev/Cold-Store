@@ -1,11 +1,35 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { DollarSign, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
+import DateRangePicker from '../components/DateRangePicker';
+import SalesTable from '../components/profit/SalesTable';
+import SummaryCard from '../components/profit/SummaryCard';
 
 function ProfitAnalysis() {
     const { total_product_sales = [], paid_product_sales = [] } = usePage().props;
+
+    // Default start and end dates - you can adjust as needed
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+
+    // Handle date changes - reset page params to 1 on new date filter
+    const handleDateChange = (value, type) => {
+        const newStartDate = type === 'start' ? value : startDate;
+        const newEndDate = type === 'end' ? value : endDate;
+
+        if (type === 'start') setStartDate(value);
+        if (type === 'end') setEndDate(value);
+
+        router.get(
+            route('profit-analysis.index'), // Change this to your actual route name if different
+            {
+                start_date: newStartDate,
+                end_date: newEndDate,
+            },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
 
     const breadcrumbs = [{ title: 'Profit Analysis', href: '/profit-analysis' }];
 
@@ -21,132 +45,46 @@ function ProfitAnalysis() {
                     <h1 className="text-3xl font-bold">Profit Analysis</h1>
                 </div>
 
+                {/* Date range picker */}
+                <div className="mb-6 flex items-center space-x-4">
+                    <DateRangePicker startDate={startDate} endDate={endDate} onChange={handleDateChange} />
+                </div>
+
                 {/* Summary Cards */}
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Sales Profit</CardTitle>
-                            <TrendingUp className="h-4 w-4 text-green-600" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-green-600">GH₵{totalSalesProfit.toFixed(2)}</div>
-                            <p className="text-muted-foreground text-xs">Cash + Credit</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Cash Sales Profit</CardTitle>
-                            <DollarSign className="h-4 w-4 text-blue-600" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-blue-600">GH₵{paidSalesProfit.toFixed(2)}</div>
-                            <p className="text-muted-foreground text-xs">Cash only</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                            <TrendingUp className="h-4 w-4 text-purple-600" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-purple-600">GH₵{totalRevenue.toFixed(2)}</div>
-                            <p className="text-muted-foreground text-xs">All sales</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
-                            <DollarSign className="h-4 w-4 text-red-600" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-red-600">GH₵{totalCost.toFixed(2)}</div>
-                            <p className="text-muted-foreground text-xs">Product costs</p>
-                        </CardContent>
-                    </Card>
+                    <SummaryCard
+                        title="Total Sales Profit"
+                        value={totalSalesProfit}
+                        icon={TrendingUp}
+                        iconColor="text-green-600"
+                        description="Cash + Credit"
+                    />
+                    <SummaryCard
+                        title="Cash Sales Profit"
+                        value={paidSalesProfit}
+                        icon={DollarSign}
+                        iconColor="text-blue-600"
+                        description="Cash only"
+                    />
+                    <SummaryCard title="Total Revenue" value={totalRevenue} icon={TrendingUp} iconColor="text-purple-600" description="All sales" />
+                    <SummaryCard title="Total Cost" value={totalCost} icon={DollarSign} iconColor="text-red-600" description="Product costs" />
                 </div>
 
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                    {/* Total Product Sales */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Total Product Sales (Cash + Credit)</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Product</TableHead>
-                                        <TableHead>Units Sold</TableHead>
-                                        <TableHead>Cost Price</TableHead>
-                                        <TableHead>Total Cost</TableHead>
-                                        <TableHead>Selling Price</TableHead>
-                                        <TableHead>Total Amount</TableHead>
-                                        <TableHead>Profit</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {total_product_sales.map((item, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="font-medium">{item.product}</TableCell>
-                                            <TableCell>{item.total_product_sold}</TableCell>
-                                            <TableCell>GH₵{parseFloat(item.unit_cost_price).toFixed(2)}</TableCell>
-                                            <TableCell>GH₵{parseFloat(item.total_cost_amount).toFixed(2)}</TableCell>
-                                            <TableCell>GH₵{parseFloat(item.selling_price).toFixed(2)}</TableCell>
-                                            <TableCell>GH₵{parseFloat(item.total_amount).toFixed(2)}</TableCell>
-                                            <TableCell className="font-medium text-green-600">GH₵{parseFloat(item.profit).toFixed(2)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                    <TableRow className="bg-green-50">
-                                        <TableCell colSpan={6} className="font-bold">
-                                            Total Profit
-                                        </TableCell>
-                                        <TableCell className="font-bold text-green-600">GH₵{totalSalesProfit.toFixed(2)}</TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-
-                    {/* Paid Product Sales */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Paid Product Sales (Cash Only)</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Product</TableHead>
-                                        <TableHead>Units Sold</TableHead>
-                                        <TableHead>Cost Price</TableHead>
-                                        <TableHead>Total Cost</TableHead>
-                                        <TableHead>Selling Price</TableHead>
-                                        <TableHead>Total Amount</TableHead>
-                                        <TableHead>Profit</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {paid_product_sales.map((item, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="font-medium">{item.product}</TableCell>
-                                            <TableCell>{item.total_product_sold}</TableCell>
-                                            <TableCell>GH₵{parseFloat(item.unit_cost_price).toFixed(2)}</TableCell>
-                                            <TableCell>GH₵{parseFloat(item.total_cost_amount).toFixed(2)}</TableCell>
-                                            <TableCell>GH₵{parseFloat(item.selling_price).toFixed(2)}</TableCell>
-                                            <TableCell>GH₵{parseFloat(item.total_amount).toFixed(2)}</TableCell>
-                                            <TableCell className="font-medium text-green-600">GH₵{parseFloat(item.profit).toFixed(2)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                    <TableRow className="bg-blue-50">
-                                        <TableCell colSpan={6} className="font-bold">
-                                            Total Cash Profit
-                                        </TableCell>
-                                        <TableCell className="font-bold text-blue-600">GH₵{paidSalesProfit.toFixed(2)}</TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
+                    <SalesTable
+                        title="Total Product Sales (Cash + Credit)"
+                        sales={total_product_sales}
+                        rowColorClass="bg-green-50"
+                        profitColorClass="text-green-600"
+                        totalProfit={totalSalesProfit}
+                    />
+                    <SalesTable
+                        title="Paid Product Sales (Cash Only)"
+                        sales={paid_product_sales}
+                        rowColorClass="bg-blue-50"
+                        profitColorClass="text-blue-600"
+                        totalProfit={paidSalesProfit}
+                    />
                 </div>
             </div>
         </AppLayout>

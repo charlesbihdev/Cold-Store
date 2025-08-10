@@ -2,13 +2,14 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\Customer;
+use App\Models\User;
 use App\Models\Product;
+use App\Models\Customer;
 use App\Models\Supplier;
-use App\Models\CreditCollection;
-use App\Models\DailyCollection;
 use App\Models\BankTransfer;
+use App\Models\DailyCollection;
+use Illuminate\Database\Seeder;
+use App\Models\CreditCollection;
 
 class DatabaseSeeder extends Seeder
 {
@@ -74,11 +75,11 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // Create a default user if none exists
-        $user = \App\Models\User::firstOrCreate(
-            ['email' => 'admin@coldstore.com'],
+        $user = User::firstOrCreate(
+            ['email' => 'brian@nokwafonyame.com'],
             [
-                'name' => 'Admin User',
-                'password' => bcrypt('password'),
+                'name' => 'Brian',
+                'password' => bcrypt('@Brian2000'),
             ]
         );
 

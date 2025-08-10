@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Models\Sale;
 use Inertia\Inertia;
 use App\Models\Product;
@@ -12,23 +13,30 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $today = now()->format('Y-m-d');
-        $lastMonth = now()->subMonth()->format('Y-m-d');
+        // Get selected date from frontend or default to today
+        $selectedDate = $request->query('date', now()->toDateString());
 
-        // Today's sales
+        // Parse dates
+        $today = Carbon::parse($selectedDate)->format('Y-m-d');
+        $lastMonth = Carbon::parse($selectedDate)->subMonth()->format('Y-m-d');
+
+        // Today's sales (actually "selected date sales")
         $todaySales = SaleItem::whereHas('sale', function ($query) use ($today) {
             $query->whereDate('created_at', $today);
         })->sum(DB::raw('(unit_selling_price * quantity)'));
 
+        // Same day last month sales
         $lastMonthTodaySales = SaleItem::whereHas('sale', function ($query) use ($lastMonth) {
             $query->whereDate('created_at', $lastMonth);
         })->sum(DB::raw('(unit_selling_price * quantity)'));
 
-        $salesChange = $lastMonthTodaySales != 0 ? (($todaySales - $lastMonthTodaySales) / abs($lastMonthTodaySales)) * 100 : 0;
+        $salesChange = $lastMonthTodaySales != 0
+            ? (($todaySales - $lastMonthTodaySales) / abs($lastMonthTodaySales)) * 100
+            : 0;
 
-        // Products sold today
+        // Products sold on selected date
         $productsSoldToday = SaleItem::whereHas('sale', function ($query) use ($today) {
             $query->whereDate('created_at', $today);
         })->sum('quantity');
@@ -37,9 +45,11 @@ class DashboardController extends Controller
             $query->whereDate('created_at', $lastMonth);
         })->sum('quantity');
 
-        $productsChange = $productsSoldLastMonth != 0 ? (($productsSoldToday - $productsSoldLastMonth) / abs($productsSoldLastMonth)) * 100 : 0;
+        $productsChange = $productsSoldLastMonth != 0
+            ? (($productsSoldToday - $productsSoldLastMonth) / abs($productsSoldLastMonth)) * 100
+            : 0;
 
-        // Low stock items (less than 10 units)
+        // Low stock items (less than 5 units)
         $lowStockItems = Product::with(['stockMovements', 'saleItems.sale'])
             ->get()
             ->filter(function ($product) {
@@ -52,27 +62,23 @@ class DashboardController extends Controller
                     ->sum('quantity');
 
                 $cashSales = $product->saleItems()
-                    ->whereHas('sale', function ($q) {
-                        $q->where('payment_type', 'cash');
-                    })->sum('quantity');
+                    ->whereHas('sale', fn($q) => $q->where('payment_type', 'cash'))
+                    ->sum('quantity');
 
                 $creditSales = $product->saleItems()
-                    ->whereHas('sale', function ($q) {
-                        $q->where('payment_type', 'credit');
-                    })->sum('quantity');
+                    ->whereHas('sale', fn($q) => $q->where('payment_type', 'credit'))
+                    ->sum('quantity');
 
                 $partialSales = $product->saleItems()
-                    ->whereHas('sale', function ($q) {
-                        $q->where('payment_type', 'partial');
-                    })->sum('quantity');
+                    ->whereHas('sale', fn($q) => $q->where('payment_type', 'partial'))
+                    ->sum('quantity');
 
                 $available = $incoming - ($sold + $cashSales + $creditSales + $partialSales);
 
                 return $available < 5;
             })->count();
 
-
-        // Credit sales today
+        // Credit sales on selected date
         $creditSalesToday = SaleItem::whereHas('sale', function ($query) use ($today) {
             $query->whereDate('created_at', $today)->where('payment_type', 'credit');
         })->sum(DB::raw('(unit_selling_price * quantity)'));
@@ -81,48 +87,51 @@ class DashboardController extends Controller
             $query->whereDate('created_at', $lastMonth)->where('payment_type', 'credit');
         })->sum(DB::raw('(unit_selling_price * quantity)'));
 
-        $creditChange = $creditSalesLastMonth != 0 ? (($creditSalesToday - $creditSalesLastMonth) / abs($creditSalesLastMonth)) * 100 : 0;
+        $creditChange = $creditSalesLastMonth != 0
+            ? (($creditSalesToday - $creditSalesLastMonth) / abs($creditSalesLastMonth)) * 100
+            : 0;
 
-        // Monthly profit (this month)
-        $thisMonthSales = SaleItem::whereHas('sale', function ($query) {
-            $query->whereMonth('created_at', now()->month)
-                ->whereYear('created_at', now()->year);
+        // Monthly profit for selected date's month
+        $thisMonthSales = SaleItem::whereHas('sale', function ($query) use ($today) {
+            $query->whereMonth('created_at', \Carbon\Carbon::parse($today)->month)
+                ->whereYear('created_at', \Carbon\Carbon::parse($today)->year);
         })->select(
             DB::raw('SUM(unit_selling_price * quantity) as total_sales'),
             DB::raw('SUM(unit_cost_price * quantity) as total_costs')
-        )
-            ->first();
+        )->first();
 
         $monthlyProfit = ($thisMonthSales->total_sales ?? 0) - ($thisMonthSales->total_costs ?? 0);
 
-        // Monthly profit (last month)
-        $lastMonthSales = SaleItem::whereHas('sale', function ($query) {
-            $query->whereMonth('created_at', now()->subMonth()->month)
-                ->whereYear('created_at', now()->subMonth()->year);
+        // Monthly profit last month relative to selected date
+        $lastMonthSales = SaleItem::whereHas('sale', function ($query) use ($today) {
+            $query->whereMonth('created_at', \Carbon\Carbon::parse($today)->subMonth()->month)
+                ->whereYear('created_at', \Carbon\Carbon::parse($today)->subMonth()->year);
         })->select(
             DB::raw('SUM(unit_selling_price * quantity) as total_sales'),
             DB::raw('SUM(unit_cost_price * quantity) as total_costs')
-        )
-            ->first();
+        )->first();
 
         $lastMonthProfit = ($lastMonthSales->total_sales ?? 0) - ($lastMonthSales->total_costs ?? 0);
 
-        // Profit change percentage
-        $profitChange = $lastMonthProfit != 0 ? (($monthlyProfit - $lastMonthProfit) / abs($lastMonthProfit)) * 100 : 0;
+        $profitChange = $lastMonthProfit != 0
+            ? (($monthlyProfit - $lastMonthProfit) / abs($lastMonthProfit)) * 100
+            : 0;
 
-        // Active customers (customers with sales in last 30 days)
-        $activeCustomers = Customer::whereHas('sales', function ($query) {
-            $query->where('created_at', '>=', now()->subDays(30));
+        // Active customers in last 30 days from selected date
+        $activeCustomers = Customer::whereHas('sales', function ($query) use ($today) {
+            $query->where('created_at', '>=', \Carbon\Carbon::parse($today)->subDays(30));
         })->count();
 
-        $lastMonthActiveCustomers = Customer::whereHas('sales', function ($query) {
-            $query->where('created_at', '>=', now()->subDays(60))
-                ->where('created_at', '<', now()->subDays(30));
+        $lastMonthActiveCustomers = Customer::whereHas('sales', function ($query) use ($today) {
+            $query->where('created_at', '>=', \Carbon\Carbon::parse($today)->subDays(60))
+                ->where('created_at', '<', \Carbon\Carbon::parse($today)->subDays(30));
         })->count();
 
-        $customersChange = $lastMonthActiveCustomers != 0 ? (($activeCustomers - $lastMonthActiveCustomers) / abs($lastMonthActiveCustomers)) * 100 : 0;
+        $customersChange = $lastMonthActiveCustomers != 0
+            ? (($activeCustomers - $lastMonthActiveCustomers) / abs($lastMonthActiveCustomers)) * 100
+            : 0;
 
-        // Recent sales (last 5 sales)
+        // Recent sales (last 5)
         $recentSales = Sale::with('customer')
             ->orderByDesc('created_at')
             ->limit(5)
@@ -150,6 +159,7 @@ class DashboardController extends Controller
             'activeCustomers' => $activeCustomers,
             'customersChange' => $customersChange,
             'recentSales' => $recentSales,
+            'selectedDate' => $today, // Send back to frontend for the date picker
         ]);
     }
 }

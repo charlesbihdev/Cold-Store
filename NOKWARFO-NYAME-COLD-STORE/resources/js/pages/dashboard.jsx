@@ -2,8 +2,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import AppLayout from '@/layouts/app-layout';
-import { Link } from '@inertiajs/react';
+import { Link, router } from '@inertiajs/react';
 import { CreditCard, DollarSign, Package, ShoppingCart, TrendingUp, Users } from 'lucide-react';
+import { useState } from 'react';
 
 const breadcrumbs = [{ title: 'Dashboard', href: '/dashboard' }];
 
@@ -21,6 +22,24 @@ function Dashboard({
     customersChange = 0,
     recentSales = [],
 }) {
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+    const handleDateChange = (e) => {
+        const newDate = e.target.value;
+        setSelectedDate(newDate);
+
+        // Send to controller with Inertia
+        router.get(
+            route('dashboard.index'),
+            { date: newDate },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            },
+        );
+    };
+
     const stats = [
         {
             title: "Today's Sales",
@@ -39,7 +58,7 @@ function Dashboard({
         {
             title: 'Low Stock Items',
             value: lowStockItems.toString(),
-            change: '-5.1%', // Placeholder
+            change: '', // removed static -5.1%
             icon: Package,
             color: 'text-orange-600',
         },
@@ -73,9 +92,12 @@ function Dashboard({
                     <SidebarTrigger />
                     <div className="flex w-full items-center justify-between">
                         <h1 className="text-3xl font-bold">Dashboard</h1>
-                        <Badge variant="outline" className="text-sm">
-                            {new Date().toLocaleDateString()}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                            <input type="date" value={selectedDate} onChange={handleDateChange} className="rounded border px-2 py-1 text-sm" />
+                            <Badge variant="outline" className="text-sm">
+                                {new Date(selectedDate).toLocaleDateString()}
+                            </Badge>
+                        </div>
                     </div>
                 </div>
 
@@ -89,10 +111,12 @@ function Dashboard({
                             </CardHeader>
                             <CardContent>
                                 <div className="text-2xl font-bold">{stat.value}</div>
-                                <p className="text-muted-foreground text-xs">
-                                    <span className={stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}>{stat.change}</span> from last
-                                    month
-                                </p>
+                                {stat.change && (
+                                    <p className="text-muted-foreground text-xs">
+                                        <span className={stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}>{stat.change}</span> from
+                                        last month
+                                    </p>
+                                )}
                             </CardContent>
                         </Card>
                     ))}

@@ -35,6 +35,7 @@ const InstantPaymentReceipt = ({ transaction, onClose }) => {
                 <table className="mb-4 w-full border-2 border-black">
                     <thead>
                         <tr className="border-b-2 border-black">
+                            <th className="border-r-2 border-black p-2 text-left font-bold">PRODUCT</th>
                             <th className="border-r-2 border-black p-2 text-left font-bold">QTY</th>
                             <th className="border-r-2 border-black p-2 text-left font-bold">UNIT PRICE</th>
                             <th className="p-2 text-left font-bold">AMOUNT</th>
@@ -44,17 +45,18 @@ const InstantPaymentReceipt = ({ transaction, onClose }) => {
                         {transaction.sale_items.map((item, idx) => (
                             <tr key={idx} className="border-b border-black">
                                 <td className="border-r-2 border-black p-2">{item.product}</td>
+                                <td className="border-r-2 border-black p-2">{item.quantity}</td>
                                 <td className="border-r-2 border-black p-2">GH₵{parseFloat(item.unit_selling_price).toFixed(2)}</td>
                                 <td className="p-2">GH₵{parseFloat(item.total).toFixed(2)}</td>
                             </tr>
                         ))}
-                        <tr className="border-b border-black">
+                        {/* <tr className="border-b border-black">
                             <td className="border-r-2 border-black p-2">
                                 {transaction.sale_items.reduce((sum, item) => sum + parseInt(item.quantity), 0)}
                             </td>
                             <td className="border-r-2 border-black p-2"></td>
                             <td className="p-2"></td>
-                        </tr>
+                        </tr> */}
                     </tbody>
                 </table>
 

@@ -15,13 +15,35 @@ use Illuminate\Support\Facades\DB;
 
 class SalesTransactionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $sales = Sale::with(['customer', 'saleItems.product'])->orderByDesc('created_at')->get();
+        $search = $request->input('search');
+        $startDate = $request->input('start_date') ?? now()->toDateString();
+        $endDate = $request->input('end_date') ?? now()->toDateString();
+
+        $query = Sale::with(['customer', 'saleItems.product'])
+            ->whereDate('created_at', '>=', $startDate)
+            ->whereDate('created_at', '<=', $endDate)
+            ->orderByDesc('created_at');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('transaction_id', 'like', "%{$search}%")
+                    ->orWhereHas('customer', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('saleItems.product', function ($q3) use ($search) {
+                        $q3->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $sales = $query->paginate(30);
+
         $products = Product::orderBy('name')->get();
         $customers = Customer::orderBy('name')->get();
 
-        $sales_transactions = $sales->map(function ($sale) {
+        $sales_transactions = $sales->through(function ($sale) {
             $profit = $sale->saleItems->sum(function ($item) {
                 return ($item->unit_selling_price - $item->unit_cost_price) * $item->quantity;
             });
@@ -54,6 +76,8 @@ class SalesTransactionController extends Controller
             'customers' => $customers,
         ]);
     }
+
+
 
     public function store(Request $request)
     {
