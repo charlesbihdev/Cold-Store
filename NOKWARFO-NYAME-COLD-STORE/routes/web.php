@@ -29,7 +29,6 @@ Route::get('/home', function () {
 Route::middleware('auth')->group(function () {
     Route::resource('dashboard', DashboardController::class);
     Route::resource('products', ProductController::class);
-    Route::resource('products', ProductController::class);
     Route::resource('product-prices', ProductPriceController::class);
     Route::resource('stock-control', StockControlController::class);
     Route::resource('daily-sales-report', DailySalesReportController::class);

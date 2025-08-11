@@ -8,15 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
-import { useForm, usePage } from '@inertiajs/react';
+import { useForm } from '@inertiajs/react';
 import { AlertTriangle, Plus, TrendingDown, Wallet } from 'lucide-react';
 import { useState } from 'react';
 
-function CreditCollection() {
+function CreditCollection({ credit_collections = [], outstanding_debts = [], expenses = [], customers = [] }) {
     const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [expenseOpen, setExpenseOpen] = useState(false);
-    const { credit_collections = [], outstanding_debts = [], expenses = [], customers = [] } = usePage().props;
 
     const filteredDebts = outstanding_debts.filter((debt) => debt.customer.toLowerCase().includes(searchQuery.toLowerCase()));
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -57,6 +56,7 @@ function CreditCollection() {
     }
 
     function handleCollect(debt) {
+        console.log(debt);
         setData({
             customer_id: debt.customer_id,
             amount_collected: '',
@@ -103,13 +103,13 @@ function CreditCollection() {
                                         <Label htmlFor="customer" className="text-right">
                                             Customer
                                         </Label>
-                                        <Select value={data.customer_id} onValueChange={(value) => setData('customer_id', value)}>
+                                        <Select value={data.customer_id} onValueChange={(value) => setData('customer_id', value)} disabled>
                                             <SelectTrigger className="col-span-3">
                                                 <SelectValue placeholder="Select customer" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {customers.map((customer) => (
-                                                    <SelectItem key={customer.id} value={String(customer.id)}>
+                                                    <SelectItem key={customer.id} value={customer.id}>
                                                         {customer.name}
                                                     </SelectItem>
                                                 ))}
@@ -129,6 +129,7 @@ function CreditCollection() {
                                                 placeholder="0.00"
                                                 value={data.amount_collected}
                                                 onChange={(e) => setData('amount_collected', e.target.value)}
+                                                required
                                             />
                                             {errors.amount_collected && <InputError message={errors.amount_collected} className="mt-2" />}
                                         </div>
