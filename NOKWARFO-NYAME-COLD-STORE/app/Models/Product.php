@@ -34,10 +34,6 @@ class Product extends Model
         return $this->belongsTo(Supplier::class);
     }
 
-    public function prices()
-    {
-        return $this->hasMany(ProductPrice::class)->latest('valid_from');
-    }
 
     public function saleItems(): HasMany
     {

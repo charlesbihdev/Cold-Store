@@ -9,17 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import AppLayout from '@/layouts/app-layout';
 import { router, useForm } from '@inertiajs/react';
-import { format, parseISO } from 'date-fns';
 import { Edit, Package, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 function Products({ products = [], suppliers = [], errors = {} }) {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isPriceModalOpen, setIsPriceModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
-    const [selectedProduct, setSelectedProduct] = useState(null);
-    const [editingPrice, setEditingPrice] = useState(null);
 
     // Form for product data
     const {
@@ -35,21 +31,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
         description: '',
         category: '',
         supplier_id: '',
-    });
-
-    // Form for product price data
-    const {
-        data: productPriceData,
-        setData: setProductPriceData,
-        post: postPrice,
-        put: putPrice,
-        processing: priceProcessing,
-        reset: resetPrice,
-        errors: priceErrors,
-    } = useForm({
-        product_id: '',
-        selling_price: '',
-        valid_from: '',
+        lines_per_carton: 1,
     });
 
     const breadcrumbs = [{ title: 'Products', href: '/products' }];
@@ -76,6 +58,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
             description: product.description || '',
             category: product.category,
             supplier_id: product.supplier_id ? product.supplier_id.toString() : '',
+            lines_per_carton: product.lines_per_carton,
         });
         setIsEditModalOpen(true);
     }
@@ -103,69 +86,6 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                 preserveState: true,
                 only: ['products', 'flash'],
             });
-        }
-    }
-
-    // Handle price form submission
-    function handlePriceSubmit(e) {
-        e.preventDefault();
-        const routeName = editingPrice ? 'product-prices.update' : 'product-prices.store';
-        const method = editingPrice ? putPrice : postPrice;
-        method(route(routeName, editingPrice ? editingPrice.id : null), {
-            onSuccess: () => {
-                resetPrice();
-                setIsPriceModalOpen(false);
-                setSelectedProduct(null);
-                setEditingPrice(null);
-            },
-            preserveScroll: true,
-            preserveState: true,
-            only: ['products', 'errors', 'flash'],
-        });
-    }
-
-    // Handle price edit
-    function handleEditPrice(price, product) {
-        setSelectedProduct(product);
-        setEditingPrice(price);
-        setProductPriceData({
-            product_id: product.id.toString(),
-            selling_price: price.selling_price.toString(),
-            valid_from: price.valid_from.split('T')[0], // Convert to YYYY-MM-DD
-            valid_to: price.valid_to ? price.valid_to.split('T')[0] : '',
-        });
-        setIsPriceModalOpen(true);
-    }
-
-    // Handle opening add price modal
-    function handleAddPrice(product) {
-        setSelectedProduct(product);
-        setProductPriceData({
-            product_id: product.id.toString(),
-            selling_price: '',
-            valid_from: '',
-        });
-        setIsPriceModalOpen(true);
-    }
-
-    // Handle price deletion
-    function handleDeletePrice(priceId) {
-        if (confirm('Are you sure you want to delete this price?')) {
-            router.delete(route('product-prices.destroy', priceId), {
-                preserveScroll: true,
-                preserveState: true,
-                only: ['products', 'flash'],
-            });
-        }
-    }
-
-    // Format date to human-readable (e.g., 26 July 2025)
-    function formatDate(isoDate) {
-        if (!isoDate) return 'Ongoing';
-        try {
-            return format(parseISO(isoDate), 'dd MMMM yyyy');
-        } catch (error) {
-            return isoDate; // Fallback to raw date if parsing fails
         }
     }
 
@@ -218,6 +138,32 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                         {productErrors.name && <InputError message={productErrors.name} className="mt-2" />}
                                     </div>
                                 </div>
+
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="lines_per_carton" className="text-right">
+                                        Lines per Carton *
+                                    </Label>
+                                    <div className="col-span-3">
+                                        <Select
+                                            value={productData.lines_per_carton?.toString()}
+                                            onValueChange={(value) => setProductData('lines_per_carton', value)}
+                                            required
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select lines per carton" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {[1, 2, 3, 4, 5].map((num) => (
+                                                    <SelectItem key={num} value={num.toString()}>
+                                                        {num}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {productErrors.lines_per_carton && <InputError message={productErrors.lines_per_carton} className="mt-2" />}
+                                    </div>
+                                </div>
+
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="description" className="text-right">
                                         Description
@@ -303,6 +249,30 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                 </div>
                             </div>
                             <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="lines_per_carton" className="text-right">
+                                    Lines per Carton *
+                                </Label>
+                                <div className="col-span-3">
+                                    <Select
+                                        value={productData.lines_per_carton?.toString()}
+                                        onValueChange={(value) => setProductData('lines_per_carton', value)}
+                                        required
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select lines per carton" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {[1, 2, 3, 4, 5].map((num) => (
+                                                <SelectItem key={num} value={num.toString()}>
+                                                    {num}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {productErrors.lines_per_carton && <InputError message={productErrors.lines_per_carton} className="mt-2" />}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
                                 <Label htmlFor="edit-description" className="text-right">
                                     Description
                                 </Label>
@@ -353,70 +323,6 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                             </div>
                             <Button type="submit" disabled={productProcessing}>
                                 Update Product
-                            </Button>
-                        </form>
-                    </DialogContent>
-                </Dialog>
-
-                {/* Add/Edit Product Price Modal */}
-                <Dialog open={isPriceModalOpen} onOpenChange={setIsPriceModalOpen}>
-                    <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                            <DialogTitle>{editingPrice ? 'Edit Product Price' : 'Add Product Price'}</DialogTitle>
-                            <DialogDescription>
-                                {editingPrice ? 'Update the price details for this product.' : 'Enter the price details for this product.'} All fields
-                                marked with * are required.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handlePriceSubmit} className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="selling_price" className="text-right">
-                                    Selling Price (₵) *
-                                </Label>
-                                <div className="col-span-3">
-                                    <Input
-                                        id="selling_price"
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="Enter selling price in Cedis"
-                                        value={productPriceData.selling_price}
-                                        onChange={(e) => setProductPriceData('selling_price', e.target.value)}
-                                        required
-                                    />
-                                    {priceErrors.selling_price && <InputError message={priceErrors.selling_price} className="mt-2" />}
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="valid_from" className="text-right">
-                                    Valid From *
-                                </Label>
-                                <div className="col-span-3">
-                                    <Input
-                                        id="valid_from"
-                                        type="date"
-                                        value={productPriceData.valid_from}
-                                        onChange={(e) => setProductPriceData('valid_from', e.target.value)}
-                                        required
-                                    />
-                                    {priceErrors.valid_from && <InputError message={priceErrors.valid_from} className="mt-2" />}
-                                </div>
-                            </div>
-                            {/* <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="valid_to" className="text-right">
-                                    Valid To
-                                </Label>
-                                <div className="col-span-3">
-                                    <Input
-                                        id="valid_to"
-                                        type="date"
-                                        value={productPriceData.valid_to}
-                                        onChange={(e) => setProductPriceData('valid_to', e.target.value)}
-                                    />
-                                    {priceErrors.valid_to && <InputError message={priceErrors.valid_to} className="mt-2" />}
-                                </div>
-                            </div> */}
-                            <Button type="submit" disabled={priceProcessing}>
-                                {editingPrice ? 'Update Price' : 'Add Price'}
                             </Button>
                         </form>
                     </DialogContent>

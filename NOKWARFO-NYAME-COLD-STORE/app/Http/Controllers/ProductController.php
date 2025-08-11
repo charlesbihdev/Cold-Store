@@ -11,7 +11,7 @@ class ProductController extends Controller
 {
     public function index()
     {
-        $products = Product::with(['supplier', 'prices'])->get();
+        $products = Product::with(['supplier'])->get();
         $suppliers = Supplier::where('is_active', true)->get();
 
         return Inertia::render('products', [
