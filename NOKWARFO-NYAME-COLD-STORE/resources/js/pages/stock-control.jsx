@@ -1,13 +1,8 @@
 import AppLayout from '@/layouts/app-layout';
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
-
-// import StockActivitySummary from './StockActivitySummary';
-// import InventoryTable from './InventoryTable';
-// import AddStockModal from './AddStockModal';
-// import StockMovementsTable from './StockMovementsTable';
-
 import DateRangePicker from '../components/DateRangePicker';
+
 import AddStockModal from '../components/stock/AddStockModal';
 import InventoryTable from '../components/stock/InventoryTable';
 import StockActivitySummary from '../components/stock/StockActivitySummary';
@@ -25,20 +20,9 @@ export default function StockControl({ stock_movements = [], products = [], supp
         total_cost: '',
         notes: '',
     });
-
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-
     const breadcrumbs = [{ title: 'Stock Control', href: '/stock-control' }];
-
-    // Calculate current stock per product
-    const productStockMap = {};
-    stock_movements.forEach((movement) => {
-        if (!productStockMap[movement.product_id]) productStockMap[movement.product_id] = 0;
-        if (movement.type === 'in' || movement.type === 'received') productStockMap[movement.product_id] += movement.quantity;
-        else if (movement.type === 'out' || movement.type === 'sold') productStockMap[movement.product_id] -= movement.quantity;
-        else if (movement.type === 'adjusted') productStockMap[movement.product_id] += movement.quantity;
-    });
 
     function openAddStock(product) {
         setSelectedProduct(product);
@@ -64,7 +48,7 @@ export default function StockControl({ stock_movements = [], products = [], supp
             },
             preserveScroll: true,
             preserveState: true,
-            only: ['stock_movements', 'stock_activity_summary', 'errors', 'flash'],
+            only: ['products', 'stock_movements', 'stock_activity_summary', 'errors', 'flash'],
         });
     }
 
@@ -81,7 +65,6 @@ export default function StockControl({ stock_movements = [], products = [], supp
         if (type === 'start') setStartDate(value);
         else if (type === 'end') setEndDate(value);
 
-        // Only send request if both dates are selected (optional)
         if ((type === 'start' && endDate) || (type === 'end' && startDate)) {
             router.get(
                 route('stock-control.index'),
@@ -106,7 +89,10 @@ export default function StockControl({ stock_movements = [], products = [], supp
                 <div className="flex items-center justify-between">
                     <h1 className="text-3xl font-bold">Inventory Management</h1>
                 </div>
-                <InventoryTable products={products} productStockMap={productStockMap} onAddStock={openAddStock} />
+
+                {/* Pass backend stock directly */}
+                <InventoryTable products={products} onAddStock={openAddStock} />
+
                 <AddStockModal
                     isOpen={isAddModalOpen}
                     onClose={() => setIsAddModalOpen(false)}
@@ -118,6 +104,7 @@ export default function StockControl({ stock_movements = [], products = [], supp
                     processing={processing}
                     onSubmit={handleAddStock}
                 />
+
                 <StockMovementsTable stock_movements={stock_movements} onDelete={handleDeleteStockMovement} />
             </div>
         </AppLayout>

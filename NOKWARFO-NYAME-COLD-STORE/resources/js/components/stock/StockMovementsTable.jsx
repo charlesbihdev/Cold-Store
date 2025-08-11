@@ -33,8 +33,8 @@ export default function StockMovementsTable({ stock_movements, onDelete }) {
                                     <TableCell>{movement.product?.name}</TableCell>
                                     <TableCell>{movement.supplier?.name}</TableCell>
                                     <TableCell>{movement.type}</TableCell>
-                                    <TableCell>{movement.quantity}</TableCell>
-                                    <TableCell>GH₵{parseFloat(movement.unit_cost).toFixed(2)}</TableCell>
+                                    <TableCell>{movement.quantity_display}</TableCell>
+                                    <TableCell>GH₵{parseFloat(movement.price_per_carton).toFixed(2)}</TableCell>
                                     <TableCell>GH₵{parseFloat(movement.total_cost).toFixed(2)}</TableCell>
                                     <TableCell>{movement.notes}</TableCell>
                                     <TableCell>

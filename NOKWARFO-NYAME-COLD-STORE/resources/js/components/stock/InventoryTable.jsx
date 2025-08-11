@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function InventoryTable({ products, productStockMap, onAddStock }) {
+export default function InventoryTable({ products, onAddStock }) {
+    console.log('Rendering InventoryTable with products:', products);
     return (
         <Card>
             <CardHeader>
@@ -22,7 +23,7 @@ export default function InventoryTable({ products, productStockMap, onAddStock }
                             {products.map((product) => (
                                 <tr key={product.id} className="border-t">
                                     <td className="p-2 font-medium">{product.name}</td>
-                                    <td className="p-2 text-center">{productStockMap[product.id] ?? 0}</td>
+                                    <td className="p-2 text-center">{product.current_stock_display ?? '0'}</td>
                                     <td className="p-2">{product.supplier?.name || 'N/A'}</td>
                                     <td className="p-2 text-center">
                                         <Button variant="outline" size="sm" onClick={() => onAddStock(product)}>
