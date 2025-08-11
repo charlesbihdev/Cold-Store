@@ -3,15 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Sale;
-use App\Models\SaleItem;
-use App\Models\StockMovement;
+use Inertia\Inertia;
 use App\Models\Product;
 use App\Models\Customer;
+use App\Models\SaleItem;
+use App\Helpers\StockHelper;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
+use App\Models\StockMovement;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\DB;
 
 class SalesTransactionController extends Controller
 {
@@ -61,9 +62,9 @@ class SalesTransactionController extends Controller
                 'sale_items' => $sale->saleItems->map(function ($item) {
                     return [
                         'product' => $item->product_name,
-                        'quantity' => $item->quantity,
-                        'unit_selling_price' => $item->unit_selling_price,
-                        'unit_cost_price' => $item->unit_cost_price,
+                        'quantity' => StockHelper::formatCartonLine($item->quantity, $item->product->lines_per_carton ?? 1),
+                        'unit_selling_price' => StockHelper::pricePerCarton($item->unit_selling_price, $item->product->lines_per_carton ?? 1),
+                        'unit_cost_price' => StockHelper::pricePerCarton($item->unit_cost_price, $item->product->lines_per_carton ?? 1),
                         'total' => $item->total,
                     ];
                 }),
@@ -86,8 +87,8 @@ class SalesTransactionController extends Controller
             'customer_name' => 'nullable|string|max:255',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.qty' => 'required|integer|min:1',
-            'items.*.unit_selling_price' => 'required|numeric|min:0',
+            'items.*.qty' => 'required|integer|min:1', // qty in lines (smallest unit)
+            'items.*.unit_selling_price' => 'required|numeric|min:0', // price per carton from frontend
             'items.*.total' => 'required|numeric|min:0',
             'amount_paid' => 'required|numeric|min:0',
             'payment_type' => 'required|in:cash,credit,partial',
@@ -97,10 +98,16 @@ class SalesTransactionController extends Controller
             return redirect()->back()->withErrors(['customer_id' => 'Either customer ID or customer name must be provided.'])->withInput();
         }
 
-        // Validate stock availability
-        foreach ($validated['items'] as $item) {
-            $product = Product::find($item['product_id']);
+        // Load all products involved at once to avoid repeated DB queries
+        $productIds = collect($validated['items'])->pluck('product_id')->unique();
+        $products = Product::whereIn('id', $productIds)->get()->keyBy('id');
 
+        // Validate stock availability and prepare unit_selling_price per line
+        foreach ($validated['items'] as &$item) {
+            $product = $products[$item['product_id']];
+            $linesPerCarton = $product->lines_per_carton ?? 1;
+
+            // Check available stock (lines)
             $incoming = $product->stockMovements()
                 ->whereIn('type', ['received', 'adjusted'])
                 ->sum('quantity');
@@ -127,21 +134,28 @@ class SalesTransactionController extends Controller
                 })
                 ->sum('quantity');
 
-            // Total Sales
             $totalSales = $cashSales + $creditSales + $partialSales;
-
             $availableStock = $incoming - ($sold + $totalSales);
 
             if ($availableStock < $item['qty']) {
                 return redirect()->back()->withErrors([
-                    'items' => "Insufficient stock for product ID {$item['product_id']}. Available: {$availableStock}, Requested: {$item['qty']}",
+                    'items' => "Insufficient stock for product '{$product->name}'. Available: {$availableStock}, Requested: {$item['qty']}",
                 ])->withInput();
             }
-        }
 
-        // Calculate unit_cost_price using FIFO
-        $itemsWithCosts = collect($validated['items'])->map(function ($item) {
-            $qtyNeeded = $item['qty'];
+            // Convert unit_selling_price (per carton) to per line for storage
+            $item['unit_selling_price'] = $item['unit_selling_price'] / $linesPerCarton;
+
+            // Recalculate total to avoid tampering
+            $item['total'] = $item['unit_selling_price'] * $item['qty'];
+        }
+        unset($item); // break reference
+
+        // Calculate unit_cost_price using FIFO and quantity needed
+        $itemsWithCosts = collect($validated['items'])->map(function ($item) use ($products) {
+            $qtyNeeded = $item['qty']; // in lines
+            $product = $products[$item['product_id']];
+
             $stockMovements = StockMovement::where('product_id', $item['product_id'])
                 ->where('type', 'received')
                 ->where('quantity', '>', 0)
@@ -153,16 +167,12 @@ class SalesTransactionController extends Controller
                 if ($qtyNeeded <= 0) break;
 
                 $qtyToUse = min($movement->quantity, $qtyNeeded);
-                $totalCost += $qtyToUse * $movement->unit_cost;
+                $totalCost += $qtyToUse * $movement->unit_cost; // unit_cost is per line
                 $qtyNeeded -= $qtyToUse;
-
-                // Update stock movement quantity
-                // $movement->quantity -= $qtyToUse;
-                // $movement->save();
             }
 
             if ($qtyNeeded > 0) {
-                // Fallback if insufficient stock (should be caught by validation)
+                // Not enough stock, fallback handled by validation but fallback cost is 0
                 $item['unit_cost_price'] = 0;
             } else {
                 $item['unit_cost_price'] = $totalCost / $item['qty'];
@@ -172,7 +182,7 @@ class SalesTransactionController extends Controller
         });
 
         $subtotal = $itemsWithCosts->sum('total');
-        $total = $subtotal; // Add tax/discount logic if needed
+        $total = $subtotal; // Extend here with taxes or discounts if needed
         $amount_paid = $validated['amount_paid'];
 
         // Validate payment logic
@@ -196,19 +206,16 @@ class SalesTransactionController extends Controller
 
         $saleData = [
             'transaction_id' => 'TXN' . time(),
-            'customer_id' => $validated['customer_id'],
+            'customer_id' => $validated['customer_id'] ?? null,
+            'customer_name' => $validated['customer_id'] ? null : $validated['customer_name'],
             'subtotal' => $subtotal,
             'tax' => 0,
             'total' => $total,
             'payment_type' => $validated['payment_type'],
-            'status' => 'completed', // All successful transactions are completed
+            'status' => 'completed',
             'amount_paid' => $amount_paid,
-            'user_id' => Auth::user()->id ?? 1,
+            'user_id' => Auth::id() ?? 1,
         ];
-
-        if (isset($validated['customer_name']) && empty($validated['customer_id'])) {
-            $saleData['customer_name'] = $validated['customer_name'];
-        }
 
         $sale = Sale::create($saleData);
 
@@ -216,26 +223,17 @@ class SalesTransactionController extends Controller
             SaleItem::create([
                 'sale_id' => $sale->id,
                 'product_id' => $item['product_id'],
-                'product_name' => Product::find($item['product_id'])->name,
-                'quantity' => $item['qty'],
-                'unit_selling_price' => $item['unit_selling_price'],
-                'unit_cost_price' => $item['unit_cost_price'],
+                'product_name' => $products[$item['product_id']]->name,
+                'quantity' => $item['qty'], // lines
+                'unit_selling_price' => $item['unit_selling_price'], // per line
+                'unit_cost_price' => $item['unit_cost_price'], // per line
                 'total' => $item['total'],
             ]);
-
-            // Create stock movement for sold items
-            // StockMovement::create([
-            //     'product_id' => $item['product_id'],
-            //     'type' => 'sold',
-            //     'quantity' => $item['qty'], // Positive quantity, as 'sold' implies reduction
-            //     'unit_cost' => $item['unit_cost_price'],
-            //     'total_cost' => $item['qty'] * $item['unit_cost_price'],
-            //     'sale_id' => $sale->id,
-            // ]);
         }
 
         return redirect()->route('sales-transactions.index')->with('success', 'Sales transaction created successfully.');
     }
+
 
     public function destroy($transaction_id)
     {

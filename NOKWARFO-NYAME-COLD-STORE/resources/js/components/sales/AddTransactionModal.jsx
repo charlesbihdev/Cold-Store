@@ -20,7 +20,6 @@ export default function AddTransactionModal({
     paymentType,
     setPaymentType,
     runningTotal,
-    // onSubmit,
 }) {
     useEffect(() => {
         form.setData('items', items);
@@ -38,26 +37,56 @@ export default function AddTransactionModal({
         form.setData('payment_type', paymentType);
     }, [paymentType]);
 
+    // Helper: get product by id
+    const getProduct = (id) => products.find((p) => String(p.id) === String(id)) || null;
+
+    // Handle changes in item fields including cartons, lines, qty, unit price
     const handleItemChange = (idx, field, value) => {
-        const newItems = items.map((item, i) =>
-            i === idx
-                ? {
-                      ...item,
-                      [field]: value,
-                      total:
-                          field === 'qty' || field === 'unit_selling_price'
-                              ? field === 'qty'
-                                  ? value * (item.unit_selling_price || 0)
-                                  : (item.qty || 0) * value
-                              : item.total,
-                  }
-                : item,
-        );
+        const newItems = items.map((item, i) => {
+            if (i !== idx) return item;
+
+            let updatedItem = { ...item, [field]: value };
+
+            const product = getProduct(updatedItem.product_id);
+            if (!product) return updatedItem;
+
+            const linesPerCarton = product.lines_per_carton || 1;
+
+            // Calculate total lines & total price based on linesPerCarton
+            let totalLines = 0;
+
+            if (linesPerCarton > 1) {
+                // Parse cartons and lines to int, fallback to 0
+                const cartons = parseInt(updatedItem.cartons) || 0;
+                const lines = parseInt(updatedItem.lines) || 0;
+                totalLines = cartons * linesPerCarton + lines;
+
+                // Calculate unit price per line
+                const unitPricePerCarton = parseFloat(updatedItem.unit_selling_price) || 0;
+                const unitPricePerLine = unitPricePerCarton / linesPerCarton;
+
+                updatedItem.qty = totalLines;
+                updatedItem.total = (unitPricePerLine * totalLines).toFixed(2);
+            } else {
+                // lines_per_carton == 1 => simple qty
+                const qty = parseInt(updatedItem.qty) || 0;
+                const unitPricePerCarton = parseFloat(updatedItem.unit_selling_price) || 0;
+
+                updatedItem.qty = qty;
+                updatedItem.total = (unitPricePerCarton * qty).toFixed(2);
+
+                // Reset cartons and lines since not used
+                updatedItem.cartons = undefined;
+                updatedItem.lines = undefined;
+            }
+
+            return updatedItem;
+        });
         setItems(newItems);
     };
 
     const addItem = () => {
-        setItems([...items, { product_id: '', qty: '', unit_selling_price: '', total: '' }]);
+        setItems([...items, { product_id: '', qty: '', unit_selling_price: '', total: '', cartons: 0, lines: 0 }]);
     };
 
     const removeItem = (idx) => {
@@ -99,7 +128,6 @@ export default function AddTransactionModal({
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
-                        // Client-side validation before submit
                         if (paymentType === 'cash' && parseFloat(amountPaid) !== runningTotal) {
                             form.setError('amount_paid', 'For cash payments, the amount paid must equal the total.');
                             return;
@@ -164,65 +192,105 @@ export default function AddTransactionModal({
                     <div>
                         <label className="mb-1 block font-medium">Items</label>
                         <div className="max-h-64 space-y-2 overflow-y-auto">
-                            {items.map((item, idx) => (
-                                <div key={idx} className="flex w-full flex-wrap items-end gap-2">
-                                    <div className="min-w-[120px] flex-1">
-                                        <Select value={item.product_id} onValueChange={(v) => handleItemChange(idx, 'product_id', v)}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Product" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {products.map((p) => (
-                                                    <SelectItem key={p.id} value={String(p.id)}>
-                                                        {p.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                            {items.map((item, idx) => {
+                                const product = getProduct(item.product_id);
+                                const linesPerCarton = product?.lines_per_carton || 1;
+
+                                return (
+                                    <div key={idx} className="grid w-full grid-cols-4 items-end gap-2">
+                                        <div className="flex-1">
+                                            <Select value={item.product_id} onValueChange={(v) => handleItemChange(idx, 'product_id', v)}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Product" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {products.map((p) => (
+                                                        <SelectItem key={p.id} value={String(p.id)}>
+                                                            {p.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        {linesPerCarton > 1 ? (
+                                            <>
+                                                <div className="">
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        placeholder="Cartons"
+                                                        value={item.cartons || ''}
+                                                        onChange={(e) => handleItemChange(idx, 'cartons', e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="">
+                                                    <Select
+                                                        value={item.lines !== undefined ? String(item.lines) : ''}
+                                                        onValueChange={(v) => handleItemChange(idx, 'lines', v)}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Lines" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {[...Array(linesPerCarton).keys()].map((n) => (
+                                                                <SelectItem key={n + 1} value={String(n + 1)}>
+                                                                    {n + 1}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="">
+                                                <Input
+                                                    type="number"
+                                                    min="1"
+                                                    placeholder="Qty"
+                                                    value={item.qty || ''}
+                                                    onChange={(e) => handleItemChange(idx, 'qty', e.target.value)}
+                                                />
+                                            </div>
+                                        )}
+
+                                        <div className="">
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                placeholder="Unit Price"
+                                                value={item.unit_selling_price || ''}
+                                                onChange={(e) => handleItemChange(idx, 'unit_selling_price', e.target.value)}
+                                            />
+                                        </div>
+
+                                        <div className="">
+                                            <Input type="number" min="0" step="0.01" placeholder="Total" value={item.total || ''} readOnly />
+                                        </div>
+
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            size="sm"
+                                            className="text-white"
+                                            onClick={() => removeItem(idx)}
+                                            disabled={items.length === 1}
+                                        >
+                                            Remove
+                                        </Button>
                                     </div>
-                                    <div className="w-20 min-w-[70px]">
-                                        <Input
-                                            type="number"
-                                            min="1"
-                                            placeholder="Qty"
-                                            value={item.qty}
-                                            onChange={(e) => handleItemChange(idx, 'qty', e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="w-24 min-w-[90px]">
-                                        <Input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            placeholder="Unit Price"
-                                            value={item.unit_selling_price}
-                                            onChange={(e) => handleItemChange(idx, 'unit_selling_price', e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="w-24 min-w-[90px]">
-                                        <Input type="number" min="0" step="0.01" placeholder="Total" value={item.total} readOnly />
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="destructive"
-                                        size="sm"
-                                        className="text-white"
-                                        onClick={() => removeItem(idx)}
-                                        disabled={items.length === 1}
-                                    >
-                                        Remove
-                                    </Button>
-                                </div>
-                            ))}
+                                );
+                            })}
                             <Button type="button" variant="outline" size="sm" onClick={addItem}>
                                 Add Item
                             </Button>
                         </div>
                         {form.errors['items'] && <div className="mt-1 text-xs text-red-500">{form.errors['items']}</div>}
                     </div>
-                    {/* Running Total */}
+
                     <div className="text-lg font-bold">Total: GH₵{runningTotal.toFixed(2)}</div>
-                    {/* Payment Section */}
+
                     <div className="flex gap-2">
                         <div className="flex-1">
                             <label className="mb-1 block font-medium">Payment Type</label>
@@ -259,6 +327,7 @@ export default function AddTransactionModal({
                             </div>
                         )}
                     </div>
+
                     <DialogFooter>
                         <Button type="button" variant="secondary" onClick={onClose}>
                             Cancel

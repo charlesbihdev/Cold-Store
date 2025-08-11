@@ -15,6 +15,7 @@ class Product extends Model
     protected $fillable = [
         'name',
         'description',
+        'lines_per_carton',
         'category',
         "default_selling_price",
         'default_cost_price',

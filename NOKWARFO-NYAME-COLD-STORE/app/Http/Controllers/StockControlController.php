@@ -48,11 +48,17 @@ class StockControlController extends Controller
             ->map(function ($movement) {
                 $movement->quantity_display = StockHelper::formatCartonLine(
                     $movement->quantity,
-                    $movement->product->lines_per_carton,
-                    $movement->price_per_carton = StockHelper::pricePerCarton($movement->unit_cost, $movement->product->lines_per_carton)
+                    $movement->product->lines_per_carton
                 );
+
+                $movement->price_per_carton = StockHelper::pricePerCarton(
+                    $movement->unit_cost,
+                    $movement->product->lines_per_carton
+                );
+
                 return $movement;
             });
+
 
         // dd($stock_movements);
 

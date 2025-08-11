@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\StockHelper;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use Illuminate\Http\Request;
@@ -9,7 +10,6 @@ use Inertia\Inertia;
 
 class DailySalesReportController extends Controller
 {
-
     public function index(Request $request)
     {
         $startDate = $request->input('start_date', now()->format('Y-m-d'));
@@ -61,17 +61,10 @@ class DailySalesReportController extends Controller
         $creditTotal = Sale::where($dateFilter)->where('payment_type', 'credit')->sum('total');
         $grandTotal  = $cashTotal + $creditTotal;
 
-        $totalProductsBoughtQty = SaleItem::whereHas('sale', fn($q) => $q->where($dateFilter)
-            ->where('payment_type', 'cash')
-            ->where('status', 'completed'))
-            ->sum('quantity');
-
-        $totalCreditedProductsQty = SaleItem::whereHas('sale', fn($q) => $q->where($dateFilter)
-            ->where('payment_type', 'credit')
-            ->where('status', 'completed'))
-            ->sum('quantity');
-
-        $totalPartialProductsQty = $this->partialProductQty($dateFilter);
+        // For totals, sum quantities grouped by product and format nicely
+        $totalProductsBoughtQty = $this->formatTotalQuantityByPaymentType('cash', $dateFilter);
+        $totalCreditedProductsQty = $this->formatTotalQuantityByPaymentType('credit', $dateFilter);
+        $totalPartialProductsQty = $this->formatTotalPartialQuantity($dateFilter);
 
         $totalProductsBoughtAmount   = $this->productTotalAmount('cash', $dateFilter);
         $totalCreditedProductsAmount = $this->productTotalAmount('credit', $dateFilter);
@@ -94,7 +87,11 @@ class DailySalesReportController extends Controller
             'totalProductsBought'           => $totalProductsBoughtQty,
             'totalCreditedProducts'         => $totalCreditedProductsQty,
             'totalPartialProducts'          => $totalPartialProductsQty,
-            'totalProductsSold'             => $totalProductsBoughtQty + $totalCreditedProductsQty + $totalPartialProductsQty,
+            'totalProductsSold'             => $this->sumFormattedQuantities([
+                $totalProductsBoughtQty,
+                $totalCreditedProductsQty,
+                $totalPartialProductsQty,
+            ]),
             'totalProductsBoughtAmount'     => $totalProductsBoughtAmount,
             'totalCreditedProductsAmount'   => $totalCreditedProductsAmount,
             'totalPartialProductsAmount'    => $totalPartialProductsAmount,
@@ -116,7 +113,7 @@ class DailySalesReportController extends Controller
     }
 
     /**
-     * Helper to get product summaries by payment type
+     * Helper to get product summaries by payment type with formatted qty
      */
     private function productSummary($paymentType, $dateFilter, $perPage, $pageName)
     {
@@ -130,13 +127,13 @@ class DailySalesReportController extends Controller
             ->simplePaginate($perPage, ['*'], $pageName)
             ->through(fn($item) => [
                 'product'      => $item->product->name,
-                'qty'          => $item->qty,
+                'qty'          => StockHelper::formatCartonLine($item->qty, $item->product->lines_per_carton),
                 'total_amount' => $item->total_amount,
             ]);
     }
 
     /**
-     * Partial product summary
+     * Partial product summary with formatted qty
      */
     private function partialProductSummary($dateFilter, $perPage, $pageName)
     {
@@ -153,7 +150,7 @@ class DailySalesReportController extends Controller
             ->simplePaginate($perPage, ['*'], $pageName)
             ->through(fn($item) => [
                 'product'      => $item->product->name,
-                'qty'          => $item->qty,
+                'qty'          => StockHelper::formatCartonLine($item->qty, $item->product->lines_per_carton),
                 'total_amount' => $item->total_amount,
                 'amount_paid'  => $item->amount_paid,
             ]);
@@ -189,5 +186,97 @@ class DailySalesReportController extends Controller
             ->where('sales.payment_type', 'partial')
             ->where('sales.status', 'completed')
             ->sum('sale_items.total');
+    }
+
+    /**
+     * Format total quantity by payment type
+     */
+    private function formatTotalQuantityByPaymentType($paymentType, $dateFilter)
+    {
+        $quantities = SaleItem::select('product_id')
+            ->selectRaw('SUM(quantity) as total_qty')
+            ->whereHas('sale', fn($q) => $q->where($dateFilter)
+                ->where('payment_type', $paymentType)
+                ->where('status', 'completed'))
+            ->groupBy('product_id')
+            ->with('product')
+            ->get();
+
+        // Format and sum all product quantities into string like "2C1L + 1C" etc
+        $formattedList = $quantities->map(function ($item) {
+            return StockHelper::formatCartonLine($item->total_qty, $item->product->lines_per_carton);
+        });
+
+        // dd($formattedList->all());
+
+        return $this->combineFormattedQuantities($formattedList->all());
+    }
+
+    /**
+     * Format total partial quantity
+     */
+    private function formatTotalPartialQuantity($dateFilter)
+    {
+        $quantities = SaleItem::select('sale_items.product_id')
+            ->selectRaw('SUM(sale_items.quantity) as total_qty')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->where($dateFilter)
+            ->where('sales.payment_type', 'partial')
+            ->where('sales.status', 'completed')
+            ->groupBy('sale_items.product_id')
+            ->with('product')
+            ->get();
+
+        $formattedList = $quantities->map(function ($item) {
+            return StockHelper::formatCartonLine($item->total_qty, $item->product->lines_per_carton);
+        });
+
+        return $this->combineFormattedQuantities($formattedList->all());
+    }
+
+    /**
+     * Combine formatted quantities (e.g. ["2C1L", "1C"]) into one string separated by plus
+     * If empty, returns "0"
+     */
+    private function combineFormattedQuantities(array $quantities): string
+    {
+        $filtered = array_filter($quantities, fn($q) => $q !== '0');
+        if (empty($filtered)) {
+            return '0';
+        }
+        return implode(' + ', $filtered);
+    }
+
+    /**
+     * Sum formatted quantities by converting back to lines and reformatting
+     * Used for totalProductsSold summary
+     */
+    private function sumFormattedQuantities(array $formattedQuantities): string
+    {
+        // Convert each formatted quantity back to total lines and sum
+
+        // dd($formattedQuantities);
+        $totalLines = 0;
+        foreach ($formattedQuantities as $formatted) {
+            $totalLines += $this->parseFormattedQuantityToLines($formatted);
+        }
+
+        // For sum, assume lines_per_carton = 1 (or adjust as needed)
+        return StockHelper::formatCartonLine($totalLines, 1);
+    }
+
+    /**
+     * Parse formatted quantity string like "2C1L" back to total lines (assuming 1 carton = lines_per_carton)
+     */
+    private function parseFormattedQuantityToLines(string $formatted): int
+    {
+        preg_match_all('/(\d+)C/', $formatted, $cartonMatches);
+        preg_match_all('/(\d+)L/', $formatted, $lineMatches);
+
+        $cartons = !empty($cartonMatches[1]) ? array_sum(array_map('intval', $cartonMatches[1])) : 0;
+        $lines = !empty($lineMatches[1]) ? array_sum(array_map('intval', $lineMatches[1])) : 0;
+
+        // Assume 1 line per carton for sum (simplify)
+        return $cartons * 1 + $lines;
     }
 }

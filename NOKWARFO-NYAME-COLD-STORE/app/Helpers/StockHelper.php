@@ -40,4 +40,14 @@ class StockHelper
 
         return $price_per_line * $lines_per_carton;
     }
+
+    // Calculate price per line from price per carton
+    public static function pricePerLine($price_per_carton, $lines_per_carton)
+    {
+        if ($lines_per_carton <= 0) {
+            return 0; // Avoid division errors
+        }
+
+        return $price_per_carton / $lines_per_carton;
+    }
 }
