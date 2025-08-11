@@ -341,6 +341,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Product Name</TableHead>
+                                    <TableHead>Lines per Carton</TableHead>
                                     <TableHead>Category</TableHead>
                                     <TableHead>Supplier</TableHead>
                                     <TableHead>Status</TableHead>
@@ -351,6 +352,7 @@ function Products({ products = [], suppliers = [], errors = {} }) {
                                 {products.map((product) => (
                                     <TableRow key={product.id}>
                                         <TableCell className="font-medium">{product.name}</TableCell>
+                                        <TableCell>{product.lines_per_carton}</TableCell>
                                         <TableCell>{product.category}</TableCell>
                                         <TableCell>{product.supplier?.name || 'N/A'}</TableCell>
                                         <TableCell>
