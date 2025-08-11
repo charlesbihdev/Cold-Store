@@ -253,30 +253,58 @@ class DailySalesReportController extends Controller
      */
     private function sumFormattedQuantities(array $formattedQuantities): string
     {
-        // Convert each formatted quantity back to total lines and sum
-
-        // dd($formattedQuantities);
+        $totalCartons = 0;
         $totalLines = 0;
+
         foreach ($formattedQuantities as $formatted) {
-            $totalLines += $this->parseFormattedQuantityToLines($formatted);
+            // Remove spaces and split by "+"
+            $parts = explode('+', str_replace(' ', '', $formatted));
+
+            foreach ($parts as $part) {
+                // Match patterns for cartons and lines
+                preg_match_all('/(\d+)(C|L)/', $part, $matches, PREG_SET_ORDER);
+                foreach ($matches as $match) {
+                    if ($match[2] === 'C') {
+                        $totalCartons += (int)$match[1];
+                    } elseif ($match[2] === 'L') {
+                        $totalLines += (int)$match[1];
+                    }
+                }
+
+                // Handle standalone numbers (like "10" or "15")
+                if (preg_match('/^\d+$/', $part)) {
+                    $totalCartons += (int)$part; // Treat standalone numbers as cartons
+                }
+            }
         }
 
-        // For sum, assume lines_per_carton = 1 (or adjust as needed)
-        return StockHelper::formatCartonLine($totalLines, 1);
+        // Format the result
+        $result = '';
+        if ($totalCartons > 0) {
+            $result .= $totalCartons . 'C';
+        }
+        if ($totalLines > 0) {
+            if ($result) {
+                $result .= ' '; // Add space if there are both cartons and lines
+            }
+            $result .= $totalLines . 'L';
+        }
+
+        return $result ?: '0'; // Return '0' if no quantities found
     }
 
     /**
      * Parse formatted quantity string like "2C1L" back to total lines (assuming 1 carton = lines_per_carton)
      */
-    private function parseFormattedQuantityToLines(string $formatted): int
-    {
-        preg_match_all('/(\d+)C/', $formatted, $cartonMatches);
-        preg_match_all('/(\d+)L/', $formatted, $lineMatches);
+    // private function parseFormattedQuantityToLines(string $formatted): int
+    // {
+    //     preg_match_all('/(\d+)C/', $formatted, $cartonMatches);
+    //     preg_match_all('/(\d+)L/', $formatted, $lineMatches);
 
-        $cartons = !empty($cartonMatches[1]) ? array_sum(array_map('intval', $cartonMatches[1])) : 0;
-        $lines = !empty($lineMatches[1]) ? array_sum(array_map('intval', $lineMatches[1])) : 0;
+    //     $cartons = !empty($cartonMatches[1]) ? array_sum(array_map('intval', $cartonMatches[1])) : 0;
+    //     $lines = !empty($lineMatches[1]) ? array_sum(array_map('intval', $lineMatches[1])) : 0;
 
-        // Assume 1 line per carton for sum (simplify)
-        return $cartons * 1 + $lines;
-    }
+    //     // Assume 1 line per carton for sum (simplify)
+    //     return $cartons * 1 + $lines;
+    // }
 }
