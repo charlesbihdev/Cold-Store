@@ -3,15 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Sale;
-use App\Models\SaleItem;
-use App\Models\StockMovement;
-use App\Models\Product;
-use App\Models\Customer;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Models\Product;
+use App\Models\SaleItem;
+use App\Helpers\StockHelper;
+use Illuminate\Http\Request;
+use App\Models\StockMovement;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\DB;
 
 class ProfitAnalysisController extends Controller
 {
@@ -19,9 +18,9 @@ class ProfitAnalysisController extends Controller
     public function index(Request $request)
     {
         $startDate = $request->query('start_date');
-        $endDate = $request->query('end_date');
+        $endDate   = $request->query('end_date');
 
-        // Build base query for sales with date filtering if dates provided
+        // Base date filter closure
         $saleDateFilter = function ($query) use ($startDate, $endDate) {
             if ($startDate) {
                 $query->whereDate('created_at', '>=', $startDate);
@@ -31,9 +30,11 @@ class ProfitAnalysisController extends Controller
             }
         };
 
-        // All sales (cash, credit, partial) filtered by date range
+        /** ---------------------------
+         *  ALL SALES (cash, credit, partial)
+         * -------------------------- */
         $total_product_sales = SaleItem::whereHas('sale', $saleDateFilter)
-            ->with('sale')
+            ->with(['sale', 'product'])
             ->get()
             ->groupBy('product_id')
             ->map(function ($items) {
@@ -43,19 +44,22 @@ class ProfitAnalysisController extends Controller
                 $avgUnitSellingPrice = $totalQty > 0 ? $totalRevenue / $totalQty : 0;
                 $avgUnitCostPrice = $totalQty > 0 ? $totalCost / $totalQty : 0;
 
+                $product = $items->first()->product;
                 return [
-                    'product' => $items->first()->product_name,
-                    'total_product_sold' => $totalQty,
-                    'unit_cost_price' => $avgUnitCostPrice,
-                    'unit_selling_price' => $avgUnitSellingPrice,
-                    'total_cost_amount' => $totalCost,
-                    'selling_price' => $avgUnitSellingPrice,
-                    'total_amount' => $totalRevenue,
-                    'profit' => $totalRevenue - $totalCost,
+                    'product'              => $product->name ?? $items->first()->product_name,
+                    'total_product_sold'   => StockHelper::formatCartonLine($totalQty, $product->lines_per_carton),
+                    'unit_cost_price'      => StockHelper::pricePerCarton($avgUnitCostPrice, $product->lines_per_carton),
+                    'unit_selling_price'   => StockHelper::pricePerCarton($avgUnitSellingPrice, $product->lines_per_carton),
+                    'total_cost_amount'    => $totalCost,
+                    'selling_price'        => StockHelper::pricePerCarton($avgUnitSellingPrice, $product->lines_per_carton),
+                    'total_amount'         => $totalRevenue,
+                    'profit'               => $totalRevenue - $totalCost,
                 ];
             })->values();
 
-        // Cash-only sales filtered by date range
+        /** ---------------------------
+         *  CASH-ONLY SALES
+         * -------------------------- */
         $paid_product_sales = SaleItem::whereHas('sale', function ($query) use ($startDate, $endDate) {
             $query->where('payment_type', 'cash');
             if ($startDate) {
@@ -65,7 +69,7 @@ class ProfitAnalysisController extends Controller
                 $query->whereDate('created_at', '<=', $endDate);
             }
         })
-            ->with('sale')
+            ->with(['sale', 'product'])
             ->get()
             ->groupBy('product_id')
             ->map(function ($items) {
@@ -75,24 +79,24 @@ class ProfitAnalysisController extends Controller
                 $avgUnitCostPrice = $totalQty > 0 ? $totalCost / $totalQty : 0;
                 $avgUnitSellingPrice = $totalQty > 0 ? $totalRevenue / $totalQty : 0;
 
+                $product = $items->first()->product;
                 return [
-                    'product' => $items->first()->product_name,
-                    'total_product_sold' => $totalQty,
-                    'unit_cost_price' => $avgUnitCostPrice,
-                    'unit_selling_price' => $avgUnitSellingPrice,
-                    'total_cost_amount' => $totalCost,
-                    'selling_price' => $avgUnitSellingPrice,
-                    'total_amount' => $totalRevenue,
-                    'profit' => $totalRevenue - $totalCost,
+                    'product'              => $product->name ?? $items->first()->product_name,
+                    'total_product_sold'   => StockHelper::formatCartonLine($totalQty, $product->lines_per_carton),
+                    'unit_cost_price'      => StockHelper::pricePerCarton($avgUnitCostPrice, $product->lines_per_carton),
+                    'unit_selling_price'   =>  StockHelper::pricePerCarton($avgUnitSellingPrice, $product->lines_per_carton),
+                    'total_cost_amount'    => $totalCost,
+                    'selling_price'        =>  StockHelper::pricePerCarton($avgUnitSellingPrice, $product->lines_per_carton),
+                    'total_amount'         => $totalRevenue,
+                    'profit'               => $totalRevenue - $totalCost,
                 ];
             })->values();
 
         return Inertia::render('profit-analysis', [
             'total_product_sales' => $total_product_sales,
-            'paid_product_sales' => $paid_product_sales,
+            'paid_product_sales'  => $paid_product_sales,
         ]);
     }
-
     // Other methods (store, destroy) remain unchanged from your last provided version
     public function store(Request $request)
     {
